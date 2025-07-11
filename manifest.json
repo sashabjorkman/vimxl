@@ -1,0 +1,14 @@
+{
+  "addons": [
+    {
+      "id": "vimxl",
+      "name": "VimXL",
+      "description": "A accurate but bland Vim-mode for LiteXL",
+      "version": "0.1",
+      "mod_version": "3",
+      "tags": [
+        "vim", "vi", "modal", "neovim", "nvim"
+      ]
+    }
+  ]
+}
