@@ -1,8 +1,8 @@
 local core = require "core"
 local core_translate = require "core.doc.translate"
 local command = require "core.command"
-local DocView = require "core.docview"
 local Doc = require "core.doc"
+local DocView = require "core.docview"
 
 local function in_vim_mode(view, doc)
   return view:extends(DocView) and view.doc == doc and view.vim_state ~= nil

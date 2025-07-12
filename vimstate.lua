@@ -8,10 +8,6 @@ local vim_motions = require "plugins.vimxl.motions"
 local vim_keymap = require "plugins.vimxl.keymap"
 local constants = require "plugins.vimxl.constants"
 
---local common = require "core.common"
---core.error("Table: %s", common.serialize(command.map, {["pretty"] = true}))
-
-
 ---@class vimxl.vimstate : core.object
 ---@field super core.object
 local VimState = Object:extend()

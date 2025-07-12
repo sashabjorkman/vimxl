@@ -1,9 +1,7 @@
 local core = require "core"
-
 local command = require "core.command"
 
 local constants = require "plugins.vimxl.constants"
-
 local vim_available_commands = require "plugins.vimxl.available-commands"
 
 ---A function that can be invoked through Vim keybinds.

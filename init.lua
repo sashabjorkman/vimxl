@@ -1,7 +1,6 @@
 -- mod-version:3
 
 local core = require "core"
-
 local command = require "core.command"
 local DocView = require "core.docview"
 
@@ -10,13 +9,6 @@ local apply_tracking_patches = require "plugins.vimxl.chronicle"
 local apply_autocomplete_patches = require "plugins.vimxl.autocomplete-patcher"
 local vim_translate = require "plugins.vimxl.translate"
 local VimState = require "plugins.vimxl.vimstate"
-
-
-
----Normally used as a key inside of keymaps.
----It suppports numbers because that is how we encode special cases 
----like repeat motion names (yy) or a leading zero.
----@alias vimxl.lookup_name string|number
 
 local function vim_mode_predicate()
   local view = core.active_view

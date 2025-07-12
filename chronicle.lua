@@ -1,10 +1,15 @@
-local command = require "core.command"
-
-local DocView = require "core.docview"
-
 -- This file is concerned with patching existing Lite-XL commands to make it
 -- possible to track the execution of these commands so that they may be
 -- replayed.
+
+local command = require "core.command"
+local DocView = require "core.docview"
+
+-- Uncomment to check what commands are defined so that we can manually
+-- inspect which ones must be tracked...
+--local core = require "core"
+--local common = require "core.common"
+--core.error("Table: %s", common.serialize(command.map, {["pretty"] = true}))
 
 ---More or less only used by the patched Lite-XL commands.
 ---Do not use for other purposes as it creates more lambdas
@@ -30,6 +35,9 @@ local untracked_commands = {
   ["doc:toggle-block-comments"] = true,
 }
 
+---Patch this command to make Vim-mode give up on tracking
+---history if encountered. Also throw us back into n mode
+---so that it is obvious to the user.
 ---@param v core.command.command
 local function patch_command_give_up(_, v)
   local old_perform = v.old_perform or v.perform
@@ -45,6 +53,10 @@ local function patch_command_give_up(_, v)
   end
 end
 
+---Works like its sibling command
+---@see patch_command_give_up
+---But does not throw us back into n-mode because in some cases
+---that would be too annoying. Like doing a mouse-click.
 ---@param v core.command.command
 local function patch_command_trash_history(_, v)
   local old_perform = v.old_perform or v.perform
@@ -59,6 +71,9 @@ local function patch_command_trash_history(_, v)
   end
 end
 
+---For "." command to work well we want to track what commands are invoked.
+---We don't use track_primitives, i.e track remove and select for this because
+---we'd lose out on contextual awareness.
 ---@param k string
 ---@param v core.command.command
 local function patch_command_for_tracking(k, v)
@@ -114,8 +129,9 @@ local function patch_command_for_tracking(k, v)
   end
 end
 
-
--- TODO: Handle snippets and autocomplete correctly.
+-- Start tracking commands to command_history
+--
+-- TODO: Handle snippets correctly.
 -- TODO: Also handle find and replace.
 local function apply_patches()
   for k, v in pairs(command.map) do

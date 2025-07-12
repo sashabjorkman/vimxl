@@ -1,3 +1,5 @@
+-- Implements f and F navigation keys.
+
 local vim_motions = require "plugins.vimxl.motions"
 local constants = require "plugins.vimxl.constants"
 

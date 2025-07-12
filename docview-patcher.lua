@@ -3,6 +3,8 @@ local DocView = require "core.docview"
 ---@class core.docview
 ---@field vim_state vimxl.vimstate | nil
 
+-- Make sure DocView proxies some functions to VimState if there is one on the
+-- current document.
 local function apply_patches()
   local draw_caret = DocView.draw_caret
   function DocView:draw_caret(x, y)

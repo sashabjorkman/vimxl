@@ -1,7 +1,18 @@
+-- Default keymap for Vim-mode. Note that the
+-- keymap for Vim-mode does not build upon the Lite-XL keymap.
+
 local keymap = require "core.keymap"
 
 local constants = require "plugins.vimxl.constants"
 local find_motions = require "plugins.vimxl.find-motions"
+
+---Normally used as a key inside of keymaps.
+---It suppports numbers because that is how we encode special cases 
+---like repeat motion names (yy) or a leading zero.
+---@alias vimxl.lookup_name string|number
+---
+---@alias vimxl.keybind_map { [vimxl.lookup_name]: vimxl.keybind_value }
+---@alias vimxl.keybind_value string|vimxl.keybind_map
 
 -- Navigation motions (in normal and visual) and operation motions behave differnetly enough that there is no point in trying to unify the code for them.
 local motions = {
@@ -29,9 +40,6 @@ local motions = {
   },
   [constants.MOTION_LINE_REPEAT] = "vimxlmotion:entire_current_line_or_more",
 }
-
----@alias vimxl.keybind_map { [vimxl.lookup_name]: vimxl.keybind_value }
----@alias vimxl.keybind_value string|vimxl.keybind_map
 
 ---@type vimxl.keybind_map
 local normal_and_visual_mode = {
@@ -90,7 +98,8 @@ for k, v in pairs(normal_and_visual_mode) do
   visual_mode[k] = v
 end
 
--- Applies globally.
+-- Applies globally. This uses the Lite-XL keymap because the Vim-mode keymap
+-- is only concerned with data that is given through on_text_input.
 keymap.add {
   ["escape"] = { "vimxl:escape-mode" },
   ["left"] = { "vimxl:move-to-previous-char" },
@@ -102,6 +111,7 @@ keymap.add {
   ["ctrl+r"] = { "vimxl:undo" },
 }
 
+---A collection of different keymap roots.
 return {
   ["motions"] = motions,
   ["normal"] = normal_mode,

@@ -1,3 +1,6 @@
+-- Vim and LiteXL implement some basic translations a bit differnetly.
+-- This file contains functions that implement the correct Vim behaviour. 
+
 local constants = require "plugins.vimxl.constants"
 
 -- Only used for inner_word implementation. And for prev_char next_char.
@@ -6,7 +9,6 @@ local doc_translate = require "core.doc.translate"
 
 -- Used for non_word_chars
 local config = require "core.config"
-
 
 ---@param char string
 local function is_non_word(char)
@@ -18,6 +20,7 @@ local function is_whitespace(char)
   return constants.WHITESPACE:find(char, nil, true) ~= nil
 end
 
+-- Collection of translations implementing Vim-specific behaviour.
 local vim_translate = {}
 
 ---@type vimxl.motion
