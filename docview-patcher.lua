@@ -1,4 +1,7 @@
 local DocView = require "core.docview"
+local VimState = require "plugins.vimxl.vimstate"
+
+local vimxl_directory = USERDIR .. PATHSEP .. "plugins" .. PATHSEP .. "vimxl" .. PATHSEP
 
 ---@class core.docview
 ---@field vim_state vimxl.vimstate | nil If non-nil then Vim-mode has been enabled
@@ -6,6 +9,23 @@ local DocView = require "core.docview"
 -- Make sure DocView proxies some functions to VimState if there is one on the
 -- current document.
 local function apply_patches()
+
+  local docview_new = DocView.new
+
+  ---@param doc core.doc
+  function DocView:new(doc)
+    docview_new(self, doc)
+
+    local core = require "core"
+    core.error(doc.abs_filename)
+
+    if doc.abs_filename and doc.abs_filename:sub(1, #vimxl_directory) == vimxl_directory then
+      -- Don't open Vim-mode when developing VimXL as that could get annoying.
+    else
+      self.vim_state = VimState(self)
+    end
+  end
+
   local draw_caret = DocView.draw_caret
   function DocView:draw_caret(x, y)
     if self.vim_state then
