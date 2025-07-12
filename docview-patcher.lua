@@ -16,9 +16,6 @@ local function apply_patches()
   function DocView:new(doc)
     docview_new(self, doc)
 
-    local core = require "core"
-    core.error(doc.abs_filename)
-
     if doc.abs_filename and doc.abs_filename:sub(1, #vimxl_directory) == vimxl_directory then
       -- Don't open Vim-mode when developing VimXL as that could get annoying.
     else
