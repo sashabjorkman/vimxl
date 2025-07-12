@@ -25,6 +25,12 @@ local function apply_patches()
   end
 
   local doc_insert = Doc.insert
+
+  ---We patch insert & remove to be trackable if a certain flag is set
+  ---for the sole purpose of being able to properly track the
+  ---item.onselect behaviour of the autocomplete plugin.
+  ---It also seemed less invasive than copying the entire autocomplete plugin
+  ---and replacing it with our own 1984 style.
   ---@diagnostic disable-next-line: duplicate-set-field
   function Doc:insert(line, col, text)
     local view = core.active_view
@@ -64,10 +70,10 @@ local function apply_patches()
     ---@cast dv core.docview
     if in_vim_mode(dv, dv.doc) then
       dv.vim_state.track_primitives = true
-    end
-    old_complete_perform(dv)
-    if in_vim_mode(dv, dv.doc) then
+      old_complete_perform(dv)
       dv.vim_state.track_primitives = false
+    else
+      old_complete_perform(dv)
     end
   end
 end

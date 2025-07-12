@@ -231,6 +231,9 @@ function VimState:on_text_input(text)
     return
   end
 
+  -- This variable has no business being enabled if outside of i-mode.
+  self.track_primitives = false
+
   if self.numerical_argument == nil and text == "0" then
     text = constants.LEADING_ZERO
   end
