@@ -35,11 +35,15 @@ local VimState = Object:extend()
 ---
 ---Base type for everything that goes into command_history.
 ---@class vimxl.repeatable_command
----@field type string
+---@field type "dummy"
 ---
 ---@class vimxl.repeatable_text_input : vimxl.repeatable_command
 ---@field type "text_input"
 ---@field text string
+---
+---@class vimxl.repeatable_remove_text : vimxl.repeatable_command
+---@field type "remove_text"
+---@field amount number
 ---
 ---@class vimxl.repeatable_command_with_number : vimxl.repeatable_command
 ---@field type "command_with_number"
@@ -58,11 +62,8 @@ local VimState = Object:extend()
 ---@field type "repeat_everything"
 ---@field number number
 ---
----@class vimxl.repeatable_dummy : vimxl.repeatable_command
----@field type "dummy"
----
 --- A collection of all known types that go into command_history.
----@alias vimxl.repeatable_generic vimxl.repeatable_text_input | vimxl.repeatable_command_with_number | vimxl.repeatable_command_no_number | vimxl.repeatable_select_to | vimxl.repeatable_everything | vimxl.repeatable_dummy
+---@alias vimxl.repeatable_generic vimxl.repeatable_text_input | vimxl.repeatable_remove_text | vimxl.repeatable_command_with_number | vimxl.repeatable_command_no_number | vimxl.repeatable_select_to | vimxl.repeatable_everything | vimxl.repeatable_command
 
 function VimState:__tostring() return "VimState" end
 
@@ -105,8 +106,12 @@ function VimState:new(view)
   ---Accumulated thru 0-9 keys.
   ---@type number | nil
   self.numerical_argument = nil
-end
 
+  ---Should we record basic function calls like Doc:insert to history?
+  ---This is mainly used for a less intrusive way of tracking autocomplete.
+  self.track_primitives = false
+
+end
 ---This callback has a chance to be triggered after a valid motion
 ---is detected. However it can also never be called if the user fails
 ---to provide a valid motion on the first try. 
@@ -340,6 +345,11 @@ end
 ---Do not call directly. Set requested_repeats instead.
 ---@param minus_one boolean Should we do one less repeat_everything?
 function VimState:repeat_commands(minus_one)
+  -- Not setting this to false could have disasterous rammification
+  -- if repeat-commands is somehow called in i-mode.
+  -- Which is to say, risk of recursive calls.
+  self.track_primitives = false
+
   local n_times = 1
   local repeat_everything_seen = false
   local completed_iterations = 1
@@ -362,6 +372,10 @@ function VimState:repeat_commands(minus_one)
         v.perform(self, v.number)
       elseif v.type == "select_to" then
         self.view.doc:select_to(v.translate, self)
+      elseif v.type == "remove_text" then
+        local _, _, l2, c2 = self.view.doc:get_selection_idx(1)
+        local l1, c1 = self.view.doc:position_offset(l2, c2, -v.amount)
+        self.view.doc:remove(l1, c1, l2, c2)
       else
         core.error("Unknown history type: %s", v.type)
       end

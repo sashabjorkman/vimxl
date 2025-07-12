@@ -7,26 +7,11 @@ local DocView = require "core.docview"
 
 local apply_docview_patches = require "plugins.vimxl.docview-patcher"
 local apply_tracking_patches = require "plugins.vimxl.chronicle"
+local apply_autocomplete_patches = require "plugins.vimxl.autocomplete-patcher"
 local vim_translate = require "plugins.vimxl.translate"
 local VimState = require "plugins.vimxl.vimstate"
 
-local core_translate = require "core.doc.translate"
 
-
-local core_translate_start_of_word = core_translate.start_of_word
-
----The idea here is to break start_of_word on purpose so that autocomplete
----no longer shows its ugly head on each keypress in Vim-mode.
----This is of course probably the ugliest hack in this codebase.
----@diagnostic disable-next-line: duplicate-set-field
-function core_translate.start_of_word(doc, line, col)
-  local view = core.active_view
-  if view:extends(DocView) and view.vim_state ~= nil and view.vim_state.mode ~= "i" then
-    return line, col
-  else
-    return core_translate_start_of_word(doc, line, col)
-  end
-end
 
 ---Normally used as a key inside of keymaps.
 ---It suppports numbers because that is how we encode special cases 
@@ -78,3 +63,4 @@ command.add(DocView, {
 
 apply_tracking_patches()
 apply_docview_patches()
+apply_autocomplete_patches()
