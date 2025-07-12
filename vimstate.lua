@@ -8,6 +8,9 @@ local vim_motions = require "plugins.vimxl.motions"
 local vim_keymap = require "plugins.vimxl.keymap"
 local constants = require "plugins.vimxl.constants"
 
+---This object is inserted into a DocView to indicate that Vim-mode has been
+---enabled for that DocView. This object is self-contained when it comes to
+---all data it needs to properly implement Vim-mode.
 ---@class vimxl.vimstate : core.object
 ---@field super core.object
 local VimState = Object:extend()
@@ -21,8 +24,10 @@ local VimState = Object:extend()
 ---We want to differentiate performs that take a number argument
 ---from those that don't so that the "dot" command can safely modify
 ---the numerical value.
+---However, the nil value is also treated as a valid value for the
+---numerical argument, hence why it is optional.
 ---@see vimxl.vimstate.begin_command_with_numerical_argument
----@alias vimxl.perform_with_number fun(view: vimxl.vimstate, n: number)
+---@alias vimxl.perform_with_optional_number fun(view: vimxl.vimstate, n: number | nil)
 ---
 ---Stored inside of repeatable_commands.
 ---@see vimxl.perform_with_number For explanation on its sibling type.
@@ -41,10 +46,10 @@ local VimState = Object:extend()
 ---@field type "remove_text"
 ---@field amount number
 ---
----@class vimxl.repeatable_command_with_number : vimxl.repeatable_command
----@field type "command_with_number"
----@field perform vimxl.perform_with_number
----@field number number
+---@class vimxl.repeatable_command_supporting_number : vimxl.repeatable_command
+---@field type "command_supporting_number"
+---@field perform vimxl.perform_with_optional_number
+---@field number number | nil
 ---
 ---@class vimxl.repeatable_command_no_number : vimxl.repeatable_command
 ---@field type "command"
@@ -59,7 +64,7 @@ local VimState = Object:extend()
 ---@field number number
 ---
 --- A collection of all known types that go into command_history.
----@alias vimxl.repeatable_generic vimxl.repeatable_text_input | vimxl.repeatable_remove_text | vimxl.repeatable_command_with_number | vimxl.repeatable_command_no_number | vimxl.repeatable_select_to | vimxl.repeatable_everything | vimxl.repeatable_command
+---@alias vimxl.repeatable_generic vimxl.repeatable_text_input | vimxl.repeatable_remove_text | vimxl.repeatable_command_supporting_number | vimxl.repeatable_command_no_number | vimxl.repeatable_select_to | vimxl.repeatable_everything | vimxl.repeatable_command
 
 function VimState:__tostring() return "VimState" end
 
@@ -174,22 +179,22 @@ end
 ---Note this is done so that the "." command can change this
 ---parameter by taking its own numerical_argument and
 ---substituting it in.
----@param perform vimxl.perform_with_number
----@param numerical_argument number
-function VimState:begin_command_with_numerical_argument(perform, numerical_argument)
+---@param perform vimxl.perform_with_optional_number
+---@param numerical_argument? number
+function VimState:begin_command_supporting_numerical_argument(perform, numerical_argument)
   if self.mode == "i" then
     table.insert(self.command_history, {
-      ["type"] = "command_with_number",
+      ["type"] = "command_supporting_number",
       ["perform"] = perform,
-      ["number"] = numerical_argument or 1,
+      ["number"] = numerical_argument,
     })
     perform(self, numerical_argument)
   else
     self.repeatable_commands = {
       {
-        ["type"] = "command_with_number",
+        ["type"] = "command_supporting_number",
         ["perform"] = perform,
-        ["number"] = numerical_argument or 1,
+        ["number"] = numerical_argument,
       }
     }
 
@@ -367,7 +372,7 @@ function VimState:repeat_commands(minus_one)
           n_times = v.number - completed_iterations
         end
         -- Otherwise a noop.
-      elseif v.type == "command_with_number" then
+      elseif v.type == "command_supporting_number" then
         v.perform(self, v.number)
       elseif v.type == "select_to" then
         self.view.doc:select_to(v.translate, self)

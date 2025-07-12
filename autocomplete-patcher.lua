@@ -8,6 +8,8 @@ local function in_vim_mode(view, doc)
   return view:extends(DocView) and view.doc == doc and view.vim_state ~= nil
 end
 
+-- For autocomplete to work properly with the "." repeat command we need
+-- to employ some hacks. 
 local function apply_patches()
   local core_translate_start_of_word = core_translate.start_of_word
 

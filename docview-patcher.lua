@@ -1,7 +1,7 @@
 local DocView = require "core.docview"
 
 ---@class core.docview
----@field vim_state vimxl.vimstate | nil
+---@field vim_state vimxl.vimstate | nil If non-nil then Vim-mode has been enabled
 
 -- Make sure DocView proxies some functions to VimState if there is one on the
 -- current document.

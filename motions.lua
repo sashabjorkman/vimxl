@@ -21,40 +21,40 @@ local vim_translate = require "plugins.vimxl.translate"
 local vim_motions = {
 
   -- Vim motions.
-  ["vimxlmotion:end_of_line"] = vim_translate.end_of_line,
-  ["vimxlmotion:first_col"] = vim_translate.start_of_line,
-  ["vimxlmotion:nth_col"] = vim_translate.nth_col,
-  ["vimxlmotion:first_printable"] = vim_translate.first_printable,
-  ["vimxlmotion:nth_line_printable"] = vim_translate.cursor_to_nth_line_printable,
-  ["vimxlmotion:line_by_number"] = vim_translate.select_entire_line_by_number,
-  ["vimxlmotion:start_of_documen_"] = vim_translate.current_line_to_doc_start_or_line,
-  ["vimxlmotion:next_word"] = vim_translate.next_word_start,
-  ["vimxlmotion:next_word_by_whitespace"] = vim_translate.next_word_start_by_whitespace,
-  ["vimxlmotion:prev_word"] = vim_translate.prev_word_start,
-  ["vimxlmotion:prev_word_by_whitespace"] = vim_translate.prev_word_start_by_whitespace,
-  ["vimxlmotion:up"] = vim_translate.up,
-  ["vimxlmotion:down"] = vim_translate.down,
-  ["vimxlmotion:left"] = vim_translate.left,
-  ["vimxlmotion:right"] = vim_translate.right,
-  ["vimxlmotion:select_inner_word"] = vim_translate.inner_word,
-  ["vimxlmotion:entire_current_line_or_more"] = vim_translate.entire_current_line_or_more,
+  ["vimxl-motion:end-of-line"] = vim_translate.end_of_line,
+  ["vimxl-motion:first-col"] = vim_translate.start_of_line,
+  ["vimxl-motion:nth-col"] = vim_translate.nth_col,
+  ["vimxl-motion:first-printable"] = vim_translate.first_printable,
+  ["vimxl-motion:nth-line-printable"] = vim_translate.cursor_to_nth_line_printable,
+  ["vimxl-motion:line-by-number"] = vim_translate.select_entire_line_by_number,
+  ["vimxl-motion:start-of-document"] = vim_translate.current_line_to_doc_start_or_line,
+  ["vimxl-motion:next-word"] = vim_translate.next_word_start,
+  ["vimxl-motion:next-word-by-whitespace"] = vim_translate.next_word_start_by_whitespace,
+  ["vimxl-motion:prev-word"] = vim_translate.prev_word_start,
+  ["vimxl-motion:prev-word-by-whitespace"] = vim_translate.prev_word_start_by_whitespace,
+  ["vimxl-motion:up"] = vim_translate.up,
+  ["vimxl-motion:down"] = vim_translate.down,
+  ["vimxl-motion:left"] = vim_translate.left,
+  ["vimxl-motion:right"] = vim_translate.right,
+  ["vimxl-motion:select-inner-word"] = vim_translate.inner_word,
+  ["vimxl-motion:entire-current-line-or-more"] = vim_translate.entire_current_line_or_more,
 
   -- Normal and visual mode navigation.
-  ["vimxlmotion:go_end_of_line"] = vim_translate.end_of_line,
-  ["vimxlmotion:go_first_col"] = vim_translate.start_of_line,
-  ["vimxlmotion:go_nth_col"] = vim_translate.nth_col,
-  ["vimxlmotion:go_first_printable"] = vim_translate.first_printable,
-  ["vimxlmotion:go_nth_line_printable"] = vim_translate.cursor_to_nth_line_printable,
-  ["vimxlmotion:go_line_by_number"] = vim_translate.goto_line_by_number, -- Differs
-  ["vimxlmotion:go_start_of_document"] = vim_translate.start_of_doc_or_line, -- Differs
-  ["vimxlmotion:go_next_word"] = vim_translate.next_word_start_multiline, -- Differs
-  ["vimxlmotion:go_next_word_by_whitespace"] = vim_translate.next_word_start_by_whitespace_multiline, -- Differs
-  ["vimxlmotion:go_prev_word"] = vim_translate.prev_word_start,
-  ["vimxlmotion:go_prev_word_by_whitespace"] = vim_translate.prev_word_start_by_whitespace,
-  ["vimxlmotion:go_up"] = vim_translate.up,
-  ["vimxlmotion:go_down"] = vim_translate.down,
-  ["vimxlmotion:go_left"] = vim_translate.left,
-  ["vimxlmotion:go_right"] = vim_translate.right,
+  ["vimxl-motion:go-end-of-line"] = vim_translate.end_of_line,
+  ["vimxl-motion:go-first-col"] = vim_translate.start_of_line,
+  ["vimxl-motion:go-nth-col"] = vim_translate.nth_col,
+  ["vimxl-motion:go-first-printable"] = vim_translate.first_printable,
+  ["vimxl-motion:go-nth-line-printable"] = vim_translate.cursor_to_nth_line_printable,
+  ["vimxl-motion:go-line-by-number"] = vim_translate.goto_line_by_number, -- Differs
+  ["vimxl-motion:go-start-of-document"] = vim_translate.start_of_doc_or_line, -- Differs
+  ["vimxl-motion:go-next-word"] = vim_translate.next_word_start_multiline, -- Differs
+  ["vimxl-motion:go-next-word-by-whitespace"] = vim_translate.next_word_start_by_whitespace_multiline, -- Differs
+  ["vimxl-motion:go-prev-word"] = vim_translate.prev_word_start,
+  ["vimxl-motion:go-prev-word-by-whitespace"] = vim_translate.prev_word_start_by_whitespace,
+  ["vimxl-motion:go-up"] = vim_translate.up,
+  ["vimxl-motion:go-down"] = vim_translate.down,
+  ["vimxl-motion:go-left"] = vim_translate.left,
+  ["vimxl-motion:go-right"] = vim_translate.right,
 }
 
 return vim_motions
