@@ -21,16 +21,6 @@ end
 local vim_translate = {}
 
 ---@type vimxl.motion
-function vim_translate.inner_word(doc, line, col)
-  local l1, c1 = doc_translate.start_of_word(doc, line, col)
-  local l2, c2 = doc_translate.end_of_word(doc, line, col)
-  return l1, c1, l2, c2
-end
-
-vim_translate.previous_char = doc_translate.previous_char
-vim_translate.next_char = doc_translate.next_char
-
----@type vimxl.motion
 function vim_translate.start_of_doc_or_line(_, _, col, _, numerical_argument)
   if numerical_argument ~= nil and numerical_argument > 0 then
     return numerical_argument, col
@@ -347,5 +337,15 @@ function vim_translate.select_entire_line_by_number(doc, line, _, _, dest)
     return dest, 0, line + 1, 0
   end
 end
+
+---@type vimxl.motion
+function vim_translate.inner_word(doc, line, col)
+  local l1, c1 = translate_prev_word_start_impl(doc, line, col)
+  local l2, c2 = doc_translate.end_of_word(doc, line, col)
+  return l1, c1, l2, c2
+end
+
+vim_translate.previous_char = doc_translate.previous_char
+vim_translate.next_char = doc_translate.next_char
 
 return vim_translate

@@ -1,6 +1,6 @@
 local command = require "core.command"
 
-local VimDocView = require "plugins.vimxl.vimdocview"
+local DocView = require "core.docview"
 
 -- This file is concerned with patching existing Lite-XL commands to make it
 -- possible to track the execution of these commands so that they may be
@@ -9,15 +9,15 @@ local VimDocView = require "plugins.vimxl.vimdocview"
 ---More or less only used by the patched Lite-XL commands.
 ---Do not use for other purposes as it creates more lambdas
 ---than is necessary.
----@param view vimxl.vimdocview
----@param perform fun(view: vimxl.vimdocview, ...: any)
-local function add_patched_command_to_history(view, perform, ...)
+---@param state vimxl.vimstate
+---@param perform fun(view: core.docview, ...: any)
+local function add_patched_command_to_history(state, perform, ...)
   -- Save the argument so that we can replay accurately.
   local arg = {...}
-  table.insert(view.command_history, {
+  table.insert(state.command_history, {
     ["type"] = "command",
-    ["perform"] = function (perform_view)
-      perform(perform_view, table.unpack(arg))
+    ["perform"] = function (perform_state)
+      perform(perform_state.view, table.unpack(arg))
     end,
   })
 end
@@ -35,11 +35,11 @@ local function patch_command_give_up(_, v)
   local old_perform = v.old_perform or v.perform
   v.old_perform = old_perform
   v.perform = function(dv, ...)
-  if dv:extends(VimDocView) and dv.mode ~= "n" then
+  if dv:extends(DocView) and dv.vim_state ~= nil and dv.mode ~= "n" then
     -- Just trash the repeat. No point in trying.
     -- And throw us back into normal mode.
-    dv.command_history = {}
-    dv:set_mode("n")
+    dv.vim_state.command_history = {}
+    dv.vim_state:set_mode("n")
   end
   old_perform(dv, ...)
   end
@@ -51,9 +51,9 @@ local function patch_command_trash_history(_, v)
   v.old_perform = old_perform
 
   v.perform = function(dv, ...)
-    if dv:extends(VimDocView) and dv.mode ~= "n" then
+    if dv:extends(DocView) and dv.vim_state ~= nil and dv.mode ~= "n" then
       -- Just trash the repeat. No point in trying.
-      dv.command_history = {}
+      dv.vim_state.command_history = {}
     end
     old_perform(dv, ...)
   end
@@ -91,20 +91,20 @@ local function patch_command_for_tracking(k, v)
 
   v.perform = function (dv, ...)
     --core.error("Command intercepted: %s", k)
-    if dv:extends(VimDocView) then
-      if dv.mode == "i" then
-        add_patched_command_to_history(dv, old_perform, ...)
-      elseif dv.mode == "v" then
+    if dv:extends(DocView) and dv.vim_state ~= nil then
+      if dv.vim_state.mode == "i" then
+        add_patched_command_to_history(dv.vim_state, old_perform, ...)
+      elseif dv.vim_state.mode == "v" then
         -- Make all doc commands into noops when in visual mode.
         -- Except for doc:cut and doc:copy. We track and allow those.
         if k == "doc:cut" or k == "doc:copy" then
           -- Record it.
-          add_patched_command_to_history(dv, old_perform, ...)
+          add_patched_command_to_history(dv.vim_state, old_perform, ...)
         else
           -- Don't do anything special.
           return
         end
-      elseif dv.mode == "n" and k ~= "doc:move-to-next-char" and k ~= "doc:paste" then
+      elseif dv.vim_state.mode == "n" and k ~= "doc:move-to-next-char" and k ~= "doc:paste" then
         -- All doc commands in normal mode should probably be ignored.
         -- Except for those commands that our n commands try to perform.
         return

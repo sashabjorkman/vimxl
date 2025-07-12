@@ -1,7 +1,7 @@
 local core = require "core"
 local style = require "core.style"
 local command = require "core.command"
-local DocView = require "core.docview"
+local Object = require "core.object"
 
 local vim_functions = require "plugins.vimxl.functions"
 local vim_motions = require "plugins.vimxl.motions"
@@ -12,9 +12,9 @@ local constants = require "plugins.vimxl.constants"
 --core.error("Table: %s", common.serialize(command.map, {["pretty"] = true}))
 
 
----@class vimxl.vimdocview : core.docview
----@field super core.docview
-local VimDocView = DocView:extend()
+---@class vimxl.vimstate : core.object
+---@field super core.object
+local VimState = Object:extend()
 
 ---All possible modes supported by VimXL by default.
 ---@alias vimxl.mode "i"|"v"|"n"
@@ -25,13 +25,13 @@ local VimDocView = DocView:extend()
 ---We want to differentiate performs that take a number argument
 ---from those that don't so that the "dot" command can safely modify
 ---the numerical value.
----@see vimxl.vimdocview.begin_command_with_numerical_argument
----@alias vimxl.perform_with_number fun(view: vimxl.vimdocview, n: number)
+---@see vimxl.vimstate.begin_command_with_numerical_argument
+---@alias vimxl.perform_with_number fun(view: vimxl.vimstate, n: number)
 ---
 ---Stored inside of repeatable_commands.
 ---@see vimxl.perform_with_number For explanation on its sibling type.
----@see vimxl.vimdocview.begin_naive_repeatable_command
----@alias vimxl.perform_no_number fun(view: vimxl.vimdocview)
+---@see vimxl.vimstate.begin_naive_repeatable_command
+---@alias vimxl.perform_no_number fun(view: vimxl.vimstate)
 ---
 ---Base type for everything that goes into command_history.
 ---@class vimxl.repeatable_command
@@ -64,10 +64,13 @@ local VimDocView = DocView:extend()
 --- A collection of all known types that go into command_history.
 ---@alias vimxl.repeatable_generic vimxl.repeatable_text_input | vimxl.repeatable_command_with_number | vimxl.repeatable_command_no_number | vimxl.repeatable_select_to | vimxl.repeatable_everything | vimxl.repeatable_dummy
 
-function VimDocView:__tostring() return "VimDocView" end
+function VimState:__tostring() return "VimState" end
 
-function VimDocView:new(doc)
-  VimDocView.super.new(self, doc)
+---@param view core.docview
+function VimState:new(view)
+  VimState.super.new(self)
+
+  self.view = view
 
   ---Which Vim mode we are emulating, i.e normal-mode, insert-mode, etc...
   ---@type vimxl.mode
@@ -107,11 +110,11 @@ end
 ---This callback has a chance to be triggered after a valid motion
 ---is detected. However it can also never be called if the user fails
 ---to provide a valid motion on the first try. 
----@alias vimxl.motion_cb fun(view: vimxl.vimdocview, motion: vimxl.motion, numerical_argument: number)
+---@alias vimxl.motion_cb fun(state: vimxl.vimstate, motion: vimxl.motion, numerical_argument: number)
 
 ---Inform Vim that we a command has kindly asked for a motion.
 ---@param cb vimxl.motion_cb
-function VimDocView:expect_motion(cb)
+function VimState:expect_motion(cb)
   self.operator_got_motion_cb = cb
   self.keymap = vim_keymap.motions
 end
@@ -120,9 +123,9 @@ end
 ---record to history if necessary so that the movement may be repeated.
 ---@param translate_fn vimxl.motion
 ---@param numerical_argument number 
-function VimDocView:move_or_select(translate_fn, numerical_argument)
+function VimState:move_or_select(translate_fn, numerical_argument)
   if self.mode == "v" then
-    self.doc:select_to(translate_fn, self, numerical_argument)
+    self.view.doc:select_to(translate_fn, self.view, numerical_argument)
     table.insert(self.command_history, {
       ["type"] = "select_to",
       ["translate"] = function (doc, line, col, view)
@@ -130,7 +133,7 @@ function VimDocView:move_or_select(translate_fn, numerical_argument)
       end,
     })
   else
-    self.doc:move_to(translate_fn, self, numerical_argument)
+    self.view.doc:move_to(translate_fn, self.view, numerical_argument)
   end
 end
 
@@ -138,7 +141,7 @@ end
 ---to be repeatable with an arbitrary amount.
 ---Default is taken from the numerical_argument of the view.
 ---@param numerical_argument? number
-function VimDocView:begin_repeatable_history(numerical_argument)
+function VimState:begin_repeatable_history(numerical_argument)
   table.insert(self.command_history, {
     ["type"] = "repeat_everything",
     ["number"] = numerical_argument or 1
@@ -150,7 +153,7 @@ end
 ---to the repeatable_commands array.
 ---@param perform vimxl.perform_no_number
 ---@param numerical_argument? number
-function VimDocView:begin_naive_repeatable_command(perform, numerical_argument)
+function VimState:begin_naive_repeatable_command(perform, numerical_argument)
   self.repeatable_commands = {
     {
       ["type"] = "repeat_everything",
@@ -172,7 +175,7 @@ end
 ---substituting it in.
 ---@param perform vimxl.perform_with_number
 ---@param numerical_argument number
-function VimDocView:begin_command_with_numerical_argument(perform, numerical_argument)
+function VimState:begin_command_with_numerical_argument(perform, numerical_argument)
   if self.mode == "i" then
     table.insert(self.command_history, {
       ["type"] = "command_with_number",
@@ -193,32 +196,33 @@ function VimDocView:begin_command_with_numerical_argument(perform, numerical_arg
   end
 end
 
+---@param docview_draw_caret fun(view: core.docview, x: number, y: number)
 ---@param x number
 ---@param y number
-function VimDocView:draw_caret(x, y)
+function VimState:draw_caret(docview_draw_caret, x, y)
     if self.mode == "i" then
-      return VimDocView.super.draw_caret(self, x, y)
+      return docview_draw_caret(self.view, x, y)
     end
 
-    local has_selection = #self.doc.selections <= 4
-                        and self.doc.selections[1] == self.doc.selections[3]
-                        and self.doc.selections[2] == self.doc.selections[4]
+    local has_selection = #self.view.doc.selections <= 4
+                        and self.view.doc.selections[1] == self.view.doc.selections[3]
+                        and self.view.doc.selections[2] == self.view.doc.selections[4]
 
     -- Only render the caret if we do not have a selection in non-insert mode...
     if has_selection or self.mode == "v" then
-      local lh = self:get_line_height()
-      local w = self:get_font():get_width(" ")
+      local lh = self.view:get_line_height()
+      local w = self.view:get_font():get_width(" ")
       renderer.draw_rect(x, y, w, lh, style.caret)
     end
 end
 
-function VimDocView:on_text_input(text)
+function VimState:on_text_input(text)
   if self.mode == "i" then
     table.insert(self.command_history, {
       ["type"] = "text_input",
       ["text"] = text
     })
-    self.doc:text_input(text)
+    self.view.doc:text_input(text)
     return
   end
 
@@ -325,18 +329,17 @@ function VimDocView:on_text_input(text)
   end
 end
 
--- We override this in order to put us in visual mode
+-- We react to this in order to put us in visual mode
 -- if a selection is made in normal mode.
-function VimDocView:on_mouse_moved(x, y, ...)
-  VimDocView.super.on_mouse_moved(self, x, y, ...)
-  if self.mouse_selecting and self.mode == "n" then
+function VimState:on_mouse_moved()
+  if self.view.mouse_selecting and self.mode == "n" then
     self:set_mode("v")
   end
 end
 
 ---Do not call directly. Set requested_repeats instead.
 ---@param minus_one boolean Should we do one less repeat_everything?
-function VimDocView:repeat_commands(minus_one)
+function VimState:repeat_commands(minus_one)
   local n_times = 1
   local repeat_everything_seen = false
   local completed_iterations = 1
@@ -346,7 +349,7 @@ function VimDocView:repeat_commands(minus_one)
     n_times = n_times - 1
     for _, v in ipairs(self.repeatable_commands) do
       if v.type == "text_input" then
-        self.doc:text_input(v.text)
+        self.view.doc:text_input(v.text)
       elseif v.type == "command" then
         v.perform(self)
       elseif v.type == "repeat_everything" then
@@ -358,7 +361,7 @@ function VimDocView:repeat_commands(minus_one)
       elseif v.type == "command_with_number" then
         v.perform(self, v.number)
       elseif v.type == "select_to" then
-        self.doc:select_to(v.translate, self)
+        self.view.doc:select_to(v.translate, self)
       else
         core.error("Unknown history type: %s", v.type)
       end
@@ -366,7 +369,7 @@ function VimDocView:repeat_commands(minus_one)
   end
 end
 
-function VimDocView:set_correct_keymap()
+function VimState:set_correct_keymap()
   -- Clear it, otherwise we have to set keymap to
   -- a map containing motions. We don't want that as
   -- that is not the Vim behaviour.
@@ -380,7 +383,7 @@ function VimDocView:set_correct_keymap()
 end
 
 ---@param mode vimxl.mode
-function VimDocView:set_mode(mode)
+function VimState:set_mode(mode)
   local prev_mode = self.mode
   self.mode = mode
   self:set_correct_keymap()
@@ -390,8 +393,8 @@ function VimDocView:set_mode(mode)
   elseif mode == "n" then
     -- Send us back to where we started. Note that this is unlike doc:select-none 
     -- because doc:select-none sets the cursor to the end of the selection.
-    local _, _, l2, c2 = self.doc:get_selection_idx(1)
-    self.doc:set_selection(l2, c2)
+    local _, _, l2, c2 = self.view.doc:get_selection_idx(1)
+    self.view.doc:set_selection(l2, c2)
 
     -- We have to scan to see if there is a
     -- repeat_everything command in there and see if its
@@ -436,13 +439,13 @@ end
 
 ---@param motion vimxl.motion
 ---@param numerical_argument? number
-function VimDocView:yank_using_motion(motion, numerical_argument)
+function VimState:yank_using_motion(motion, numerical_argument)
   local full_text = ""
   local text = ""
-  for _, line, col in self.doc:get_selections(true) do
-    text = self.doc:get_text(motion(self.doc, line, col, self, numerical_argument))
+  for _, line, col in self.view.doc:get_selections(true) do
+    text = self.view.doc:get_text(motion(self.view.doc, line, col, self.view, numerical_argument))
     full_text = full_text == "" and text or (text .. " " .. full_text)
-    if line == #self.doc.lines then
+    if line == #self.view.doc.lines then
       -- We are on the last line, add a newline to emulate Vim behaviour when
       -- typing yy better.
       full_text = full_text .. "\n"
@@ -451,16 +454,16 @@ function VimDocView:yank_using_motion(motion, numerical_argument)
   system.set_clipboard(full_text)
 end
 
-function VimDocView:escape_mode()
+function VimState:escape_mode()
   -- Copied from doc:select-none
   -- We want to deselect everything when escape is pressed more or less.
   -- We want to the last selection if possible.
-  local l1, c1 = self.doc:get_selection_idx(self.doc.last_selection)
+  local l1, c1 = self.view.doc:get_selection_idx(self.view.doc.last_selection)
   if not l1 then
-    l1, c1 = self.doc:get_selection_idx(1)
+    l1, c1 = self.view.doc:get_selection_idx(1)
   end
-  self.doc:set_selection(l1, c1)
+  self.view.doc:set_selection(l1, c1)
   self:set_mode("n")
 end
 
-return VimDocView
+return VimState

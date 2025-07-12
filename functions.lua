@@ -9,7 +9,7 @@ local vim_available_commands = require "plugins.vimxl.available-commands"
 ---A function that can be invoked through Vim keybinds.
 ---It can also be invoked through the command mode if put inside the 
 -- vim_visible_commands table. 
----@alias vimxl.vim_command fun(view: vimxl.vimdocview, numerical_argument: number | nil)
+---@alias vimxl.vim_command fun(view: vimxl.vimstate, numerical_argument: number | nil)
 
 ---All commands known to Vim.
 ---@type { [string]: vimxl.vim_command }
@@ -18,119 +18,113 @@ local vim_functions = {}
 vim_functions = {
   -- Visual mode specifics
 
-  ["v_yank"] = function (view)
+  ["v_yank"] = function (state)
     command.perform("doc:copy")
-    view:set_mode("n")
+    state:set_mode("n")
   end,
-  ["v_substitute"] = function (view)
+  ["v_substitute"] = function (state)
     command.perform("doc:cut")
-    view:set_mode("i")
+    state:set_mode("i")
   end,
-  ["v_change"] = function (view)
+  ["v_change"] = function (state)
     command.perform("doc:cut")
-    view:set_mode("i")
+    state:set_mode("i")
   end,
-  ["v_delete"] = function (view)
+  ["v_delete"] = function (state)
     command.perform("doc:cut")
-    view:set_mode("n")
+    state:set_mode("n")
   end,
 
   -- Normal mode specifics
 
-  ["visual_mode"] = function (view)
-    view:set_mode("v")
+  ["visual_mode"] = function (state)
+    state:set_mode("v")
   end,
-  ["insert_mode"] = function (view, numerical_argument)
-    view:set_mode("i")
-    view:begin_repeatable_history(numerical_argument)
+  ["insert_mode"] = function (state, numerical_argument)
+    state:set_mode("i")
+    state:begin_repeatable_history(numerical_argument)
   end,
-  ["append_to_start"] = function (view, numerical_argument)
-    view:set_mode("i")
-    view:begin_repeatable_history(numerical_argument)
+  ["append_to_start"] = function (state, numerical_argument)
+    state:set_mode("i")
+    state:begin_repeatable_history(numerical_argument)
     command.perform("doc:move-to-start-of-line")
   end,
-  ["append_to_end"] = function (view, numerical_argument)
-    view:set_mode("i")
-    view:begin_repeatable_history(numerical_argument)
+  ["append_to_end"] = function (state, numerical_argument)
+    state:set_mode("i")
+    state:begin_repeatable_history(numerical_argument)
     command.perform("doc:move-to-end-of-line")
   end,
-  ["newline_below"] = function (view, numerical_argument)
-    view:set_mode("i")
-    view:begin_repeatable_history(numerical_argument)
+  ["newline_below"] = function (state, numerical_argument)
+    state:set_mode("i")
+    state:begin_repeatable_history(numerical_argument)
     command.perform("doc:newline-below")
   end,
-  ["newline_above"] = function (view, numerical_argument)
-    view:set_mode("i")
-    view:begin_repeatable_history(numerical_argument)
+  ["newline_above"] = function (state, numerical_argument)
+    state:set_mode("i")
+    state:begin_repeatable_history(numerical_argument)
     command.perform("doc:newline-above")
   end,
-  ["delete"] = function (view, initial_numerical_argument)
-    view:expect_motion(function (m_view, motion, initial_numerical_argument_motion)
+  ["delete"] = function (start_state, initial_numerical_argument)
+    start_state:expect_motion(function (second_state, motion, initial_numerical_argument_motion)
       local product_numerical_argument = (initial_numerical_argument or 1) * (initial_numerical_argument_motion or 1)
-      local function perform(yank_view, numerical_argument)
-        yank_view:yank_using_motion(motion, numerical_argument)
-        for _, line, col in yank_view.doc:get_selections(true) do
-          yank_view.doc:remove(motion(yank_view.doc, line, col, yank_view, numerical_argument))
+      second_state:begin_command_with_numerical_argument(function (state, numerical_argument)
+        state:yank_using_motion(motion, numerical_argument)
+        for _, line, col in state.view.doc:get_selections(true) do
+          state.view.doc:remove(motion(state.view.doc, line, col, state.view, numerical_argument))
         end
-      end
-      m_view:begin_command_with_numerical_argument(perform, product_numerical_argument)
+      end, product_numerical_argument)
     end)
   end,
-  ["change"] = function (view, initial_numerical_argument)
-    view:expect_motion(function (m_view, motion, initial_numerical_argument_motion)
+  ["change"] = function (start_state, initial_numerical_argument)
+    start_state:expect_motion(function (second_state, motion, initial_numerical_argument_motion)
       local product_numerical_argument = (initial_numerical_argument or 1) * (initial_numerical_argument_motion or 1)
-      m_view:set_mode("i")
-      local function perform(c_view, numerical_argument)
-        for _, line, col in c_view.doc:get_selections(true) do
-          c_view.doc:remove(motion(c_view.doc, line, col, c_view, numerical_argument))
+      second_state:set_mode("i")
+      second_state:begin_command_with_numerical_argument(function (state, numerical_argument)
+        for _, line, col in state.view.doc:get_selections(true) do
+          state.view.doc:remove(motion(state.view.doc, line, col, state.view, numerical_argument))
         end
-      end
-      m_view:begin_command_with_numerical_argument(perform, product_numerical_argument)
+      end, product_numerical_argument)
     end)
   end,
-  ["yank"] = function (view, numerical_argument)
-    view:expect_motion(function (m_view, motion)
-      m_view:yank_using_motion(motion, numerical_argument)
+  ["yank"] = function (state, numerical_argument)
+    state:expect_motion(function (second_state, motion, _)
+      second_state:yank_using_motion(motion, numerical_argument)
     end)
   end,
-  ["paste_before"] = function (view, numerical_argument)
-    local function perform()
+  ["paste_before"] = function (start_state, numerical_argument)
+    start_state:begin_naive_repeatable_command(function (state)
       local clip = system.get_clipboard()
       if clip:match("\n$") then
         -- Adapted from doc:newline-below
-        for idx, line in view.doc:get_selections(false, true) do
+        for idx, line in state.view.doc:get_selections(false, true) do
           local indent = clip:match(constants.LEADING_INDENTATION_REGEX)
-          view.doc:insert(line, 0, clip)
-          view.doc:set_selections(idx, line, string.ulen(indent) + 1)
+          state.view.doc:insert(line, 0, clip)
+          state.view.doc:set_selections(idx, line, string.ulen(indent) + 1)
         end
       else
         command.perform("doc:paste")
       end
-    end
-
-    view:begin_naive_repeatable_command(perform, numerical_argument)
+    end, numerical_argument)
   end,
-  ["paste_after"] = function (view, numerical_argument)
-    local function perform()
+  ["paste_after"] = function (start_state, numerical_argument)
+    start_state:begin_naive_repeatable_command(function (state)
       local clip = system.get_clipboard()
       if clip:match("\n$") then
         -- Adapted from doc:newline-below
-        for idx, line in view.doc:get_selections(false, true) do
+        for idx, line in state.view.doc:get_selections(false, true) do
           local indent = clip:match(constants.LEADING_INDENTATION_REGEX)
-          view.doc:insert(line, math.huge, "\n" .. clip:sub(1, -2))
-          view.doc:set_selections(idx, line + 1, string.ulen(indent) + 1)
+          state.view.doc:insert(line, math.huge, "\n" .. clip:sub(1, -2))
+          state.view.doc:set_selections(idx, line + 1, string.ulen(indent) + 1)
         end
       else
         command.perform("doc:move-to-next-char")
         command.perform("doc:paste")
       end
-    end
-
-    view:begin_naive_repeatable_command(perform, numerical_argument)
+    end, numerical_argument)
   end,
-  ["repeat"] = function (view, numerical_argument)
+  ["repeat"] = function (state, numerical_argument)
     if numerical_argument ~= nil then
-      for _, v in ipairs(view.repeatable_commands) do
+      for _, v in ipairs(state.repeatable_commands) do
         if v.type == "repeat_everything"
         or v.type == "command_with_number" then
           v.number = numerical_argument
@@ -138,7 +132,7 @@ vim_functions = {
         end
       end
     end
-    view.repeat_requested = true
+    state.repeat_requested = true
   end,
   ["undo"] = function (_, numerical_argument)
     local count = numerical_argument or 1
@@ -146,8 +140,8 @@ vim_functions = {
       command.perform("doc:undo")
     end
   end,
-  ["find"] = function (view, _)
-    command.perform("find-replace:find", view)
+  ["find"] = function (state, _)
+    command.perform("find-replace:find", state.view)
     -- Since find-replace:find doesn't "block" we can't simply do:
     -- local count = numerical_argument or 1
     -- for _ = 1, count - 1 do
@@ -158,19 +152,19 @@ vim_functions = {
     -- Maybe hijack something in find-replace? Or we could implement our own...
     -- TODO: Either way, fix this!
   end,
-  ["repeat_find"] = function (view, numerical_argument)
+  ["repeat_find"] = function (state, numerical_argument)
     local count = numerical_argument or 1
     for _ = 1, count do
-      command.perform("find-replace:repeat-find", view)
+      command.perform("find-replace:repeat-find", state.view)
     end
   end,
-  ["previous_find"] = function (view, numerical_argument)
+  ["previous_find"] = function (state, numerical_argument)
     local count = numerical_argument or 1
     for _ = 1, count do
-      command.perform("find-replace:previous-find", view)
+      command.perform("find-replace:previous-find", state.view)
     end
   end,
-  ["command_mode"] = function (view)
+  ["command_mode"] = function (state)
     core.command_view:enter("Command", {
     submit = function(text)
       local lookup = vim_available_commands[text]
@@ -178,9 +172,9 @@ vim_functions = {
       if lookup == nil then
         core.error("Unknown command: " .. text)
       elseif vim_functions[lookup] then
-          vim_functions[lookup](view, nil)
+          vim_functions[lookup](state, nil)
       elseif  command.map[lookup] then
-        command.perform(lookup, view)
+        command.perform(lookup, state.view)
       else
         core.error("Unknown command: " .. text)
       end

@@ -3,7 +3,7 @@ local vim_translate = require "plugins.vimxl.translate"
 ---A Vim motion that can be used either by a vim_command calling expect_motion,
 ---Or directly by putting it into a keymap, in which case it will either move
 ---or select depending on the current mode.
----@alias vimxl.motion fun(doc: core.doc, line: number, col: number, view: vimxl.vimdocview, numerical_argument: number | nil): number, number, number | nil, number | nil
+---@alias vimxl.motion fun(doc: core.doc, line: number, col: number, view: core.docview, numerical_argument: number | nil): number, number, number | nil, number | nil
 
 ---Contains all known Vim motions.
 ---This is the only place where motions can be placed.
