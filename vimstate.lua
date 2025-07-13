@@ -60,12 +60,16 @@ local VimState = Object:extend()
 ---@field type "select_to"
 ---@field translate vimxl.motion
 ---
+---@class vimxl.repeatable_move_to : vimxl.repeatable_command
+---@field type "move_to"
+---@field translate vimxl.motion
+---
 ---@class vimxl.repeatable_everything : vimxl.repeatable_command
 ---@field type "repeat_everything"
 ---@field number number
 ---
 --- A collection of all known types that go into command_history.
----@alias vimxl.repeatable_generic vimxl.repeatable_text_input | vimxl.repeatable_remove_text | vimxl.repeatable_command_supporting_number | vimxl.repeatable_command_no_number | vimxl.repeatable_select_to | vimxl.repeatable_everything | vimxl.repeatable_command
+---@alias vimxl.repeatable_generic vimxl.repeatable_text_input | vimxl.repeatable_remove_text | vimxl.repeatable_command_supporting_number | vimxl.repeatable_command_no_number | vimxl.repeatable_move_to | vimxl.repeatable_select_to | vimxl.repeatable_everything | vimxl.repeatable_command
 
 function VimState:__tostring() return "VimState" end
 
@@ -135,6 +139,14 @@ function VimState:move_or_select(translate_fn, numerical_argument)
     self.view.doc:select_to(translate_fn, self.view, numerical_argument)
     table.insert(self.command_history, {
       ["type"] = "select_to",
+      ["translate"] = function (doc, line, col, view)
+        return translate_fn(doc, line, col, view, numerical_argument)
+      end,
+    })
+  elseif self.mode == "i" then
+    self.view.doc:move_to(translate_fn, self.view, numerical_argument)
+    table.insert(self.command_history, {
+      ["type"] = "move_to",
       ["translate"] = function (doc, line, col, view)
         return translate_fn(doc, line, col, view, numerical_argument)
       end,
@@ -366,6 +378,8 @@ function VimState:repeat_commands(minus_one)
         v.perform(self, v.number)
       elseif v.type == "select_to" then
         self.view.doc:select_to(v.translate, self)
+      elseif v.type == "move_to" then
+        self.view.doc:move_to(v.translate, self)
       elseif v.type == "remove_text" then
         local _, _, l2, c2 = self.view.doc:get_selection_idx(1)
         local l1, c1 = self.view.doc:position_offset(l2, c2, -v.amount)
