@@ -99,7 +99,14 @@ vim_functions = {
       second_state:set_mode("i")
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
         for _, line, col in state.view.doc:get_selections(true) do
-          state.view.doc:remove(motion(state.view.doc, line, col, state.view, numerical_argument))
+          local l1, c1, l2, c2 = motion(state.view.doc, line, col, state.view, numerical_argument)
+          if l1 ~= l2 and c2 == 0 then
+            -- This was a linewise remove. But we don't want to
+            -- remove the last newline.
+            l2 = l2 - 1
+            c2 = math.huge
+          end
+          state.view.doc:remove(l1, c1, l2, c2)
         end
       end, product_numerical_argument)
     end)

@@ -15,6 +15,8 @@ local function vim_mode_predicate()
   return view:extends(DocView) and view.vim_state ~= nil
 end
 
+-- TOOD: Handle special case enter to \n
+
 command.add(vim_mode_predicate, {
   ["vimxl:escape-mode"] = function ()
     core.active_view.vim_state:escape_mode()
