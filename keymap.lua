@@ -40,8 +40,7 @@ local motions = {
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
   },
-  [constants.MOTION_LINE_REPEAT] = "vimxl-motion:entire-current-line-or-more",
-  -- TODO: Add \n motion that selects entire lines and goes down n+1 lines, also goes to first column it seems.
+  [constants.MOTION_LINE_REPEAT] = "vimxl-motion:nth-line-minus-one-printable",
 
   -- TODO: Add "v" that disables linewise for the operation. This would require some special logic in vimstate.
 }
@@ -117,7 +116,9 @@ keymap.add {
   ["down"] = { "vimxl:move-to-next-line" },
   ["pageup"] = { "vimxl:move-to-previous-page" },
   ["pagedown"] = { "vimxl:move-to-next-page" },
-  ["ctrl+r"] = { "vimxl:undo" },
+  ["ctrl+r"] = { "vimxl:redo" },
+  ["return"] = { "vimxl:newline" },
+  ["keypad enter"] = { "vimxl:newline" },
 }
 
 ---A collection of different keymap roots.

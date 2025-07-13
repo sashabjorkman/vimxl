@@ -39,8 +39,22 @@ command.add(vim_mode_predicate, {
   ["vimxl:move-to-next-page"] = function ()
     core.active_view.vim_state:move_or_select(DocView.translate.next_page)
   end,
+})
+
+local function vim_non_i_mode_predicate()
+  local view = core.active_view
+  return view:extends(DocView) and view.vim_state ~= nil and view.vim_state.mode ~= "i"
+end
+
+command.add(vim_non_i_mode_predicate, {
   ["vimxl:undo"] = function ()
     command.perform("doc:undo")
+  end,
+  ["vimxl:redo"] = function ()
+    command.perform("doc:redo")
+  end,
+  ["vimxl:newline"] = function ()
+    core.active_view.vim_state:on_text_input("\n")
   end,
 })
 

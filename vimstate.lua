@@ -9,8 +9,6 @@ local vim_keymap = require "plugins.vimxl.keymap"
 local vim_linewise = require "plugins.vimxl.linewise"
 local constants = require "plugins.vimxl.constants"
 
--- TODO: Fix 2d2d so that it correctly removes 4 lines.
-
 ---This object is inserted into a DocView to indicate that Vim-mode has been
 ---enabled for that DocView. This object is self-contained when it comes to
 ---all data it needs to properly implement Vim-mode.
