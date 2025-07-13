@@ -6,7 +6,10 @@ local Object = require "core.object"
 local vim_functions = require "plugins.vimxl.functions"
 local vim_motions = require "plugins.vimxl.motions"
 local vim_keymap = require "plugins.vimxl.keymap"
+local vim_linewise = require "plugins.vimxl.linewise"
 local constants = require "plugins.vimxl.constants"
+
+-- TODO: Fix 2d2d so that it correctly removes 4 lines.
 
 ---This object is inserted into a DocView to indicate that Vim-mode has been
 ---enabled for that DocView. This object is self-contained when it comes to
@@ -128,7 +131,7 @@ end
 ---Make a movement/selection within the current document, but also
 ---record to history if necessary so that the movement may be repeated.
 ---@param translate_fn vimxl.motion
----@param numerical_argument number 
+---@param numerical_argument? number 
 function VimState:move_or_select(translate_fn, numerical_argument)
   if self.mode == "v" then
     self.view.doc:select_to(translate_fn, self.view, numerical_argument)
@@ -141,85 +144,6 @@ function VimState:move_or_select(translate_fn, numerical_argument)
   else
     self.view.doc:move_to(translate_fn, self.view, numerical_argument)
   end
-end
-
----Call this if you want the entire command history
----to be repeatable with an arbitrary amount.
----Default is taken from the numerical_argument of the view.
----@param numerical_argument? number
-function VimState:begin_repeatable_history(numerical_argument)
-  table.insert(self.command_history, {
-    ["type"] = "repeat_everything",
-    ["number"] = numerical_argument or 1
-  })
-end
-
----The simple case where we just rerun the command
----n times... We do so by prepending a repeat_everything
----to the repeatable_commands array.
----@param perform vimxl.perform_no_number
----@param numerical_argument? number
-function VimState:begin_naive_repeatable_command(perform, numerical_argument)
-  self.repeatable_commands = {
-    {
-      ["type"] = "repeat_everything",
-      ["number"] = numerical_argument or 1,
-    },
-    {
-      ["type"] = "command",
-      ["perform"] = perform,
-    }
-  }
-
-  self.repeat_requested = true
-end
-
----The most advanced case where the command decides by
----itself how it should handle the numerical argument.
----Note this is done so that the "." command can change this
----parameter by taking its own numerical_argument and
----substituting it in.
----@param perform vimxl.perform_with_optional_number
----@param numerical_argument? number
-function VimState:begin_command_supporting_numerical_argument(perform, numerical_argument)
-  if self.mode == "i" then
-    table.insert(self.command_history, {
-      ["type"] = "command_supporting_number",
-      ["perform"] = perform,
-      ["number"] = numerical_argument,
-    })
-    perform(self, numerical_argument)
-  else
-    self.repeatable_commands = {
-      {
-        ["type"] = "command_supporting_number",
-        ["perform"] = perform,
-        ["number"] = numerical_argument,
-      }
-    }
-
-    self.repeat_requested = true
-  end
-end
-
----@param docview_draw_caret fun(view: core.docview, x: number, y: number)
----@param x number
----@param y number
-function VimState:draw_caret(docview_draw_caret, x, y)
-    if self.mode == "i" then
-      return docview_draw_caret(self.view, x, y)
-    end
-
-    local has_selection = #self.view.doc.selections <= 4
-                        and self.view.doc.selections[1] == self.view.doc.selections[3]
-                        and self.view.doc.selections[2] == self.view.doc.selections[4]
-
-    -- Only render the caret if we do not have a selection in non-insert mode...
-    if has_selection or self.mode == "v" then
-      local lh = self.view:get_line_height()
-      local w = self.view:get_font():get_width(" ")
-      renderer.draw_rect(x, y, w, lh, style.caret)
-    end
 end
 
 function VimState:on_text_input(text)
@@ -286,19 +210,36 @@ function VimState:on_text_input(text)
     local motion_cb = self.operator_got_motion_cb
     self.operator_got_motion_cb = nil
 
-    -- Either we move or we call the cb.
+    local is_linewise = vim_linewise[lookup_name]
+
+    -- Either we move or we call the cb. Anything else would be silly...
     if motion_cb then
       motion_cb(self, function (doc, line, col, view, numerical_argument)
-        -- We always want a selection. So if the translation didn't give  us one,
-        -- then we just assume that the translation is from the current cursor
-        -- location.
-        -- On top of this we want to provide numerical_argument to the function.
+        -- We create a new lambda scope each time we use a motion
+        -- together with an operator. This might seem inefficient but
+        -- it is actually to avoid having to create and store many different
+        -- variations of similar translations.
+
         local l1, c1, l2, c2 = as_motion(doc, line, col, view, numerical_argument)
-        if l2 == nil or c2 == nil then
-          return line, col, l1, c1
-        else
-          return l1, c1, l2, c2
+
+        -- If the function wasn't a text-object then we make sure the selection
+        -- goes from the cursor to the new location.
+        if l2 == nil then l2 = line end
+        if c2 == nil then c2 = col end
+
+        -- Sanitize them for the is_linewise step.
+        -- Otherwise we end up incrementing the wrong thing.
+        if l1 > l2 or l1 == l2 and c1 > c2 then
+          l1, c1, l2, c2 = l2, c2, l1, c1
         end
+
+        if is_linewise then
+          c1 = 0
+          c2 = 0
+          l2 = l2 + 1
+        end
+
+        return l1, c1, l2, c2
       end, self.numerical_argument)
     else
       -- Because the key we used for our lookup was
@@ -338,11 +279,62 @@ function VimState:on_text_input(text)
   end
 end
 
--- We react to this in order to put us in visual mode
--- if a selection is made in normal mode.
-function VimState:on_mouse_moved()
-  if self.view.mouse_selecting and self.mode == "n" then
-    self:set_mode("v")
+---Call this if you want the entire command history
+---to be repeatable with an arbitrary amount.
+---Default is taken from the numerical_argument of the view.
+---@param numerical_argument? number
+function VimState:begin_repeatable_history(numerical_argument)
+  table.insert(self.command_history, {
+    ["type"] = "repeat_everything",
+    ["number"] = numerical_argument or 1
+  })
+end
+
+---The simple case where we just rerun the command
+---n times... We do so by prepending a repeat_everything
+---to the repeatable_commands array.
+---@param perform vimxl.perform_no_number
+---@param numerical_argument? number
+function VimState:begin_naive_repeatable_command(perform, numerical_argument)
+  self.repeatable_commands = {
+    {
+      ["type"] = "repeat_everything",
+      ["number"] = numerical_argument or 1,
+    },
+    {
+      ["type"] = "command",
+      ["perform"] = perform,
+    }
+  }
+
+  self.repeat_requested = true
+end
+
+---The most advanced case where the command decides by
+---itself how it should handle the numerical argument.
+---Note this is done so that the "." command can change this
+---parameter by taking its own numerical_argument and
+---substituting it in.
+---@param perform vimxl.perform_with_optional_number
+---@param numerical_argument? number
+function VimState:begin_command_supporting_numerical_argument(perform, numerical_argument)
+  if self.mode == "i" then
+    table.insert(self.command_history, {
+      ["type"] = "command_supporting_number",
+      ["perform"] = perform,
+      ["number"] = numerical_argument,
+    })
+    perform(self, numerical_argument)
+  else
+    self.repeatable_commands = {
+      {
+        ["type"] = "command_supporting_number",
+        ["perform"] = perform,
+        ["number"] = numerical_argument,
+      }
+    }
+
+    self.repeat_requested = true
   end
 end
 
@@ -482,6 +474,41 @@ function VimState:escape_mode()
   end
   self.view.doc:set_selection(l1, c1)
   self:set_mode("n")
+end
+
+---@param docview_draw_caret fun(view: core.docview, x: number, y: number)
+---@param x number
+---@param y number
+function VimState:draw_caret(docview_draw_caret, x, y)
+    if self.mode == "i" then
+      return docview_draw_caret(self.view, x, y)
+    end
+
+    local has_selection = #self.view.doc.selections <= 4
+                        and self.view.doc.selections[1] == self.view.doc.selections[3]
+                        and self.view.doc.selections[2] == self.view.doc.selections[4]
+
+    -- Only render the caret if we do not have a selection in non-insert mode...
+    if has_selection or self.mode == "v" then
+      local lh = self.view:get_line_height()
+      local w = self.view:get_font():get_width(" ")
+      renderer.draw_rect(x, y, w, lh, style.caret)
+    end
+end
+
+-- We react to this in order to put us in visual mode
+-- if a selection is made in normal mode.
+function VimState:on_mouse_moved()
+  if self.view.mouse_selecting and self.mode == "n" then
+    self:set_mode("v")
+  end
+end
+
+---@param button core.view.mousebutton
+function VimState:on_mouse_pressed(button)
+  if self.mode == "v" and button == "left" then
+    self:escape_mode()
+  end
 end
 
 return VimState

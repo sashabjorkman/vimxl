@@ -112,7 +112,9 @@ local function patch_command_for_tracking(k, v)
       elseif dv.vim_state.mode == "v" then
         -- Make all doc commands into noops when in visual mode.
         -- Except for doc:cut and doc:copy. We track and allow those.
-        if k == "doc:cut" or k == "doc:copy" then
+        -- Also allow indent and unindent. Those are cool too.
+        if k == "doc:cut" or k == "doc:copy"
+        or k == "doc:indent" or k == "doc:unindent" then
           -- Record it.
           add_patched_command_to_history(dv.vim_state, old_perform, ...)
         else

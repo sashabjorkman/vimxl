@@ -1,7 +1,8 @@
 local DocView = require "core.docview"
+local common = require "core.common"
 local VimState = require "plugins.vimxl.vimstate"
 
-local vimxl_directory = USERDIR .. PATHSEP .. "plugins" .. PATHSEP .. "vimxl" .. PATHSEP
+local vimxl_directory = USERDIR .. PATHSEP .. "plugins" .. PATHSEP .. "vimxl"
 
 ---@class core.docview
 ---@field vim_state vimxl.vimstate | nil If non-nil then Vim-mode has been enabled
@@ -16,7 +17,7 @@ local function apply_patches()
   function DocView:new(doc)
     docview_new(self, doc)
 
-    if doc.abs_filename and doc.abs_filename:sub(1, #vimxl_directory) == vimxl_directory then
+    if doc.abs_filename and common.path_belongs_to(doc.abs_filename, vimxl_directory) then
       -- Don't open Vim-mode when developing VimXL as that could get annoying.
     else
       self.vim_state = VimState(self)
@@ -47,6 +48,14 @@ local function apply_patches()
     if self.vim_state then
       self.vim_state:on_mouse_moved()
     end
+  end
+
+  local on_mouse_pressed = DocView.on_mouse_pressed
+  function DocView:on_mouse_pressed(button, ...)
+    if self.vim_state then
+      self.vim_state:on_mouse_pressed(button)
+    end
+    on_mouse_pressed(self, button, ...)
   end
 
 end

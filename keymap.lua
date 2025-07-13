@@ -20,8 +20,10 @@ local motions = {
   [constants.LEADING_ZERO] = "vimxl-motion:first-col",
   ["|"] = "vimxl-motion:nth-col",
   ["^"] = "vimxl-motion:first-printable",
-  ["_"] = "vimxl-motion:nth-line-printable",
-  ["G"] = "vimxl-motion:line-by-number",
+  ["_"] = "vimxl-motion:nth-line-minus-one-printable",
+  ["+"] = "vimxl-motion:nth-line-printable",
+  ["\n"] = "vimxl-motion:nth-line-printable",
+  ["G"] = "vimxl-motion:end-or-line-no",
   ["g"] = {
     ["g"] = "vimxl-motion:start-of-document",
   },
@@ -39,27 +41,32 @@ local motions = {
     ["w"] = "vimxl-motion:select-inner-word",
   },
   [constants.MOTION_LINE_REPEAT] = "vimxl-motion:entire-current-line-or-more",
+  -- TODO: Add \n motion that selects entire lines and goes down n+1 lines, also goes to first column it seems.
+
+  -- TODO: Add "v" that disables linewise for the operation. This would require some special logic in vimstate.
 }
 
 ---@type vimxl.keybind_map
 local normal_and_visual_mode = {
-  ["$"] = "vimxl-motion:go-end-of-line",
-  [constants.LEADING_ZERO] = "vimxl-motion:go-first-col",
-  ["|"] = "vimxl-motion:go-nth-col",
-  ["^"] = "vimxl-motion:go-first-printable",
-  ["_"] = "vimxl-motion:go-nth-line-printable",
-  ["G"] = "vimxl-motion:go-line-by-number",
+  ["$"] = "vimxl-motion:end-of-line",
+  [constants.LEADING_ZERO] = "vimxl-motion:first-col",
+  ["|"] = "vimxl-motion:nth-col",
+  ["^"] = "vimxl-motion:first-printable",
+  ["_"] = "vimxl-motion:nth-line-minus-one-printable",
+  ["+"] = "vimxl-motion:nth-line-printable",
+  ["\n"] = "vimxl-motion:nth-line-printable",
+  ["G"] = "vimxl-motion:end-or-line-no",
   ["g"] = {
-    ["g"] = "vimxl-motion:go-start-of-document",
+    ["g"] = "vimxl-motion:start-of-document",
   },
-  ["w"] = "vimxl-motion:go-next-word",
-  ["W"] = "vimxl-motion:go-next-word-by-whitespace",
-  ["b"] = "vimxl-motion:go-prev-word",
-  ["B"] = "vimxl-motion:go-prev-word-by-whitespace",
-  ["k"] = "vimxl-motion:go-up",
-  ["j"] = "vimxl-motion:go-down",
-  ["h"] = "vimxl-motion:go-left",
-  ["l"] = "vimxl-motion:go-right",
+  ["w"] = "vimxl-motion:next-word-multiline",
+  ["W"] = "vimxl-motion:next-word-by-whitespace-multiline",
+  ["b"] = "vimxl-motion:prev-word",
+  ["B"] = "vimxl-motion:prev-word-by-whitespace",
+  ["k"] = "vimxl-motion:up",
+  ["j"] = "vimxl-motion:down",
+  ["h"] = "vimxl-motion:left",
+  ["l"] = "vimxl-motion:right",
   ["f"] = find_motions.navigate_forward,
   ["F"] = find_motions.navigate_backward,
 }
@@ -70,6 +77,8 @@ local visual_mode = {
   ["s"] = "vimxl-visual:substitute",
   ["c"] = "vimxl-visual:change",
   ["d"] = "vimxl-visual:delete",
+  [">"] = "vimxl-visual:indent",
+  ["<"] = "vimxl-visual:unindent",
 }
 
 ---@type vimxl.keybind_map

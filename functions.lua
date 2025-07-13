@@ -3,6 +3,7 @@ local command = require "core.command"
 
 local constants = require "plugins.vimxl.constants"
 local vim_available_commands = require "plugins.vimxl.available-commands"
+local vim_translate = require "plugins.vimxl.translate"
 
 ---This is how Vim behaves. Don't question it.
 ---@param a number | nil
@@ -40,6 +41,16 @@ vim_functions = {
     command.perform("doc:cut")
     state:set_mode("n")
   end,
+  ["vimxl-visual:indent"] = function (start_state, numerical_argument)
+    start_state:begin_naive_repeatable_command(function (_)
+      command.perform("doc:indent")
+    end, numerical_argument)
+  end,
+  ["vimxl-visual:unindent"] = function (start_state, numerical_argument)
+    start_state:begin_naive_repeatable_command(function (_)
+      command.perform("doc:unindent")
+    end, numerical_argument)
+  end,
 
   -- Normal mode specifics
 
@@ -53,7 +64,7 @@ vim_functions = {
   ["vimxl-normal:append-to-start"] = function (state, numerical_argument)
     state:set_mode("i")
     state:begin_repeatable_history(numerical_argument)
-    command.perform("doc:move-to-start-of-line")
+    state:move_or_select(vim_translate.first_printable)
   end,
   ["vimxl-normal:append-to-end"] = function (state, numerical_argument)
     state:set_mode("i")
@@ -70,20 +81,21 @@ vim_functions = {
     state:begin_repeatable_history(numerical_argument)
     command.perform("doc:newline-above")
   end,
-  ["vimxl-normal:delete"] = function (start_state, initial_numerical_argument)
-    start_state:expect_motion(function (second_state, motion, initial_numerical_argument_motion)
-      local product_numerical_argument = product_with_strange_default(initial_numerical_argument, initial_numerical_argument_motion)
+  ["vimxl-normal:delete"] = function (start_state, numerical_argument_operator)
+    start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
+      local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
         state:yank_using_motion(motion, numerical_argument)
         for _, line, col in state.view.doc:get_selections(true) do
           state.view.doc:remove(motion(state.view.doc, line, col, state.view, numerical_argument))
         end
+        state:move_or_select(vim_translate.first_printable)
       end, product_numerical_argument)
     end)
   end,
-  ["vimxl-normal:change"] = function (start_state, initial_numerical_argument)
-    start_state:expect_motion(function (second_state, motion, initial_numerical_argument_motion)
-      local product_numerical_argument = product_with_strange_default(initial_numerical_argument, initial_numerical_argument_motion)
+  ["vimxl-normal:change"] = function (start_state, numerical_argument_operator)
+    start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
+      local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:set_mode("i")
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
         for _, line, col in state.view.doc:get_selections(true) do
@@ -92,9 +104,10 @@ vim_functions = {
       end, product_numerical_argument)
     end)
   end,
-  ["vimxl-normal:yank"] = function (state, numerical_argument)
-    state:expect_motion(function (second_state, motion, _)
-      second_state:yank_using_motion(motion, numerical_argument)
+  ["vimxl-normal:yank"] = function (state, numerical_argument_operator)
+    state:expect_motion(function (second_state, motion, numerical_argument_motion)
+      local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
+      second_state:yank_using_motion(motion, product_numerical_argument)
     end)
   end,
   ["vimxl-normal:paste-before"] = function (start_state, numerical_argument)

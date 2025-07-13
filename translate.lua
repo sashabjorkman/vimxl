@@ -21,6 +21,8 @@ local function is_whitespace(char)
 end
 
 -- Collection of translations implementing Vim-specific behaviour.
+-- Keep in mind that it contains both what we in the Vim world would call
+-- motions as well as text objects, in one table.
 local vim_translate = {}
 
 ---@type vimxl.motion
@@ -293,17 +295,25 @@ function vim_translate.nth_col(_, line, _, _, to)
 end
 
 ---@type vimxl.motion
-function vim_translate.first_printable(doc, line)
+function vim_translate.nth_line_printable(doc, line, _, _, to)
+  ---Make sure that 0 is an acceptable argument, or else
+  ---we will break:
+  ---@see vim_translate.first_printable
+  if to == nil then to = 1 end
+  line = line + to
   local leading_whitespace = #doc.lines[line]:match(constants.LEADING_INDENTATION_REGEX)
   return line, 1 + leading_whitespace
 end
 
 ---@type vimxl.motion
-function vim_translate.cursor_to_nth_line_printable(doc, line, _, _, to)
+function vim_translate.first_printable(doc, line, col, view)
+  return vim_translate.nth_line_printable(doc, line, col, view, 0)
+end
+
+---@type vimxl.motion
+function vim_translate.nth_line_minus_one_printable(doc, line, col, view, to)
   if to == nil then to = 1 end
-  line = line + to - 1
-  local leading_whitespace = #doc.lines[line]:match(constants.LEADING_INDENTATION_REGEX)
-  return line, 0, line, 1 + leading_whitespace
+  return vim_translate.nth_line_printable(doc, line, col, view, to - 1)
 end
 
 ---@type vimxl.motion
@@ -313,32 +323,9 @@ function vim_translate.entire_current_line_or_more(_, line, _, _ , extra)
 end
 
 ---@type vimxl.motion
-function vim_translate.current_line_to_doc_start_or_line(_, line, _, _, numerical_argument)
-  if numerical_argument ~= nil and numerical_argument > 0 then
-    if numerical_argument >= line then
-      return line, 0, numerical_argument + 1, 0
-    else
-      return numerical_argument, 0, line + 1, 0
-    end
-  else
-    return 0, 0, line + 1, 0
-  end
-end
-
----@type vimxl.motion
-function vim_translate.goto_line_by_number(doc, _, col, _, dest)
+function vim_translate.end_of_doc_or_line_number(doc, _, col, _, dest)
   if dest == nil or dest == 0 then dest = #doc.lines end
   return dest, col
-end
-
----@type vimxl.motion
-function vim_translate.select_entire_line_by_number(doc, line, _, _, dest)
-  if dest == nil or dest == 0 then dest = #doc.lines end
-  if dest >= line then
-    return line, 0, dest + 1, 0
-  else
-    return dest, 0, line + 1, 0
-  end
 end
 
 ---@type vimxl.motion

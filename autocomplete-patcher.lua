@@ -78,6 +78,18 @@ local function apply_patches()
       old_complete_perform(dv)
     end
   end
+
+  local old_cancel_perform = command.map["autocomplete:cancel"].perform
+  command.map["autocomplete:cancel"].perform = function (dv)
+    old_cancel_perform()
+
+    -- It is support annoying having to press escape-twice due to autocomplete.
+    -- So we just leave directly. Question is, should we expose some other 
+    -- alternative so that our dear users could bind some other key?
+    if in_vim_mode(dv, dv.doc) then
+      dv.vim_state:escape_mode()
+    end
+  end
 end
 
 return apply_patches
