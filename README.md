@@ -5,6 +5,8 @@
 Vim plugin for [Lite XL](https://lite-xl.com/), that hopefully doesn't suck this time!
 
 ## Installation
+Just do `git clone https://github.com/sashabjorkman/vimxl`
+inside of your `plugins/` directory.
 
 ## Features
 Here is a non-exhaustive list of features currently implemented:
