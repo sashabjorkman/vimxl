@@ -32,20 +32,21 @@ If you make heavy use of visual block mode (ctrl+V)
 then VimXL is not quite ready for you yet.
 Although much of what you would do with visual block mode
 can easily be done through Lite XL's multi-cursor support.
-Still it is understandable if your Vim muscle memory makes this a deal-breaker
-for you.
+Still it is understandable if your
+Vim muscle memory makes this a deal-breaker for you.
 
 ## Philosophy
 The aim of VimXL is to be as non-intrusive as possible.
 And generally to be a good citizen in the Lite XL world.
-For example, the insert-mode of VimXL is almost identical to running
-Lite XL without any plugins.
+For example,
+the insert-mode of VimXL is almost
+identical to running Lite XL without any plugins.
 Also where possible,
 VimXL tries to avoid reimplementing features already present in Lite XL.
 VimXL reuses the bundled autocomplete.lua plugin.
 Motions in VimXL are implemented as ordinary Lite XL translations.
 
-Furthermore the goal is also to only implement a subset
+Furthermore the goal is to only implement a subset
 of the vast collection of Vim commands and motions.
 More specifically, only the ones that I use, or that are requested by others.
 However if a command is added to this plugin,
@@ -68,6 +69,17 @@ As for feature requests, I only implement features that people actually use.
 Meaning that if something is missing and it is annoying you to the degree
 that you are unable to use VimXL without this feature,
 then I am also interested in hearing about your case.
+Keep in mind however that this plugin has
+the sole goal of implementing stock Vim features.
+Any plugins, rare flags/options or the like are out
+of scope and should be implemented in another repository.
+There are plans for a plugin with much bigger ambitions
+that provides an experience more akin to
+[DOOM Emacs](https://github.com/doomemacs/doomemacs)
+or other famous emacs/neovim config files.
+The only exception to this is the which-key.el plugin.
+I might at some point get around to implementing something like it.
+Of course it will be an optionally loaded Lua file.
 
 Currently there might be a few kinks that need to be worked out.
 Except usability to increase rapidly as I keep dogfooding this plugin myself
