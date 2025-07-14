@@ -57,3 +57,18 @@ it's implementation of the delete word command is to my knowledge correct.
 Try running `2d2w3.` in VimXL and other plugins and see for yourself. 
 The correct behaviour (that can be seen by doing the same in Vim) is that
 a total of 7 words should be deleted.
+
+## Bugs and Inconsistencies
+If you find a bug or any implementation inconsistencies between VimXL and stock
+Vim then,
+please feel free to create an issue
+or contact me through the official Lite XL community.
+I am very interested in resolving these.
+As for feature requests, I only implement features that people actually use.
+Meaning that if something is missing and it is annoying you to the degree
+that you are unable to use VimXL without this feature,
+then I am also interested in hearing about your case.
+
+Currently there might be a few kinks that need to be worked out.
+Except usability to increase rapidly as I keep dogfooding this plugin myself
+over the comming days. Apologies for any inconveniences in the mean time.
