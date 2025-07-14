@@ -73,8 +73,8 @@ Keep in mind however that this plugin has
 the sole goal of implementing stock Vim features.
 Any plugins, rare flags/options or the like are out
 of scope and should be implemented in another repository.
-There are plans for a plugin with much bigger ambitions
-that provides an experience more akin to
+There are plans for a plugin that builds upon VimXL with
+much bigger ambitions that provides an experience more akin to
 [DOOM Emacs](https://github.com/doomemacs/doomemacs)
 or other famous emacs/neovim config files.
 The only exception to this is the which-key.el plugin.
@@ -82,5 +82,5 @@ I might at some point get around to implementing something like it.
 Of course it will be an optionally loaded Lua file.
 
 Currently there might be a few kinks that need to be worked out.
-Except usability to increase rapidly as I keep dogfooding this plugin myself
+Expect usability to increase rapidly as I keep dogfooding this plugin myself
 over the comming days. Apologies for any inconveniences in the mean time.
