@@ -25,6 +25,9 @@ command.add(vim_mode_predicate, {
     core.active_view.vim_state:move_or_select(vim_translate.previous_char)
   end,
   ["vimxl:move-to-next-char"] = function ()
+    -- TODO: Should we clamp inside of normal mode? In that case maybe
+    -- previous-char also shouldn't wrap in normal mode?
+    -- Also mouse cursor clicks should be line-len clamped as well then...
     core.active_view.vim_state:move_or_select(vim_translate.next_char)
   end,
   ["vimxl:move-to-previous-line"] = function ()

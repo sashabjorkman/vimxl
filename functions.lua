@@ -143,7 +143,10 @@ vim_functions = {
           state.view.doc:set_selections(idx, line + 1, string.ulen(indent) + 1)
         end
       else
-        command.perform("doc:move-to-next-char")
+        -- We use vim_translate.right instead of doc:move-to-next-char
+        -- because move-to-next-char will wrap to the next line which is
+        -- unwanted behaviour in this case.
+        start_state:move_or_select(vim_translate.right)
         command.perform("doc:paste")
       end
     end, numerical_argument)

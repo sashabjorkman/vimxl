@@ -314,6 +314,12 @@ function vim_translate.right(_, line, col, _, by)
 end
 
 ---@type vimxl.motion
+function vim_translate.right_clamped(doc, line, col, _, by)
+  if by == nil then by = 1 end
+  return line, math.min(col + by, #doc.lines[line] - 1)
+end
+
+---@type vimxl.motion
 function vim_translate.nth_col(_, line, _, _, to)
   if to == nil then to = 1 end
   return line, to

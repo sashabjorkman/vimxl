@@ -30,6 +30,7 @@ local vim_motions = {
   ["vimxl-motion:down"] = vim_translate.down,
   ["vimxl-motion:left"] = vim_translate.left,
   ["vimxl-motion:right"] = vim_translate.right,
+  ["vimxl-motion:right-clamped"] = vim_translate.right_clamped,
 
   -- Operator motion specifics.
   ["vimxl-motion:select-inner-word"] = vim_translate.inner_word,

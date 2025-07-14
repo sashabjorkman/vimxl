@@ -65,7 +65,7 @@ local normal_and_visual_mode = {
   ["k"] = "vimxl-motion:up",
   ["j"] = "vimxl-motion:down",
   ["h"] = "vimxl-motion:left",
-  ["l"] = "vimxl-motion:right",
+  ["l"] = "vimxl-motion:right-clamped",
   ["f"] = find_motions.navigate_forward,
   ["F"] = find_motions.navigate_backward,
 }
