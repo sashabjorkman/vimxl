@@ -1,4 +1,7 @@
 # VimXL
+![Commit Activity](https://img.shields.io/github/commit-activity/t/sashabjorkman/vimxl?label=Commits)
+![GitHub Issues](https://img.shields.io/github/issues/sashabjorkman/vimxl?label=Issues)
+![Created](https://img.shields.io/badge/Created-July%202025-%23EEE?style=flat)
 
 ![a teaser image of VimXL](teaser.png "LiteXL in action")
 
