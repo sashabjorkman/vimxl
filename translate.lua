@@ -47,14 +47,15 @@ local function translate_next_word_start_impl(doc, line, col, continue_to_next_l
 
   local last_col = #doc.lines[line]
   local initial_is_non_word = is_non_word(doc:get_char(line, col))
+  local stop_on_any_non_whitespace = false
   while col < last_col do
     col = col + 1
     local col_value = doc:get_char(line, col)
 
     if is_whitespace(col_value) then
       -- From here on: stop at first word.
-      initial_is_non_word = true
-    elseif initial_is_non_word ~= is_non_word(col_value) then
+      stop_on_any_non_whitespace = true
+    elseif stop_on_any_non_whitespace or initial_is_non_word ~= is_non_word(col_value) then
       return line, col
     end
   end
@@ -170,14 +171,13 @@ local function translate_prev_word_start_impl(doc, line, col)
   -- this translation will stop on non-words as well as line-start
   -- to better mimic Vim itself. 
 
-  -- Handle wrap to end of last line.
-  if col == 1 and line > 1 then
-    line = line - 1
-    col = #doc.lines[line]
-  end
+  local start_col = col
 
   -- Don't get stuck...
-  col = col - 1
+  -- We allow it to go to 0 because then handle-wrap will know what to do.
+  if col >= 1 then
+    col = col - 1
+  end
   local col_value = doc:get_char(line, col)
 
   while col >= 1 and is_whitespace(col_value) do
@@ -185,10 +185,29 @@ local function translate_prev_word_start_impl(doc, line, col)
     col_value = doc:get_char(line, col)
   end
 
+  -- Handle wrap to end of last line.
+  if col == 0 and line > 1 then
+    line = line - 1
+    col = #doc.lines[line]
+    start_col = col
+    col_value = doc:get_char(line, col)
+  end
+
+  while col > 1 and is_whitespace(col_value) do
+    col = col - 1
+    col_value = doc:get_char(line, col)
+  end
+
   local initial_is_non_word = is_non_word(col_value)
+
   while col >= 1 do
-    if initial_is_non_word ~= is_non_word(col_value) then
-      return line, col + 1
+    if initial_is_non_word ~= is_non_word(col_value)
+    or is_whitespace(col_value) then
+      if col + 1 == start_col then
+        return line, col
+      else
+        return line, col + 1
+      end
     end
 
     col = col - 1
@@ -217,20 +236,26 @@ local function translate_prev_word_start_by_whitespace_impl(doc, line, col)
   -- Unlike the equivalent Lite-XL built-in translation,
   -- this translation will only stop on whitespace but also the line-start.
 
-  -- Handle wrap to end of last line.
-  if col == 1 and line > 1 then
-    line = line - 1
-    col = #doc.lines[line]
-  end
+
 
   -- Don't get stuck...
+  if col >= 1 then
   col = col - 1
+  end
   local col_value = doc:get_char(line, col)
 
   while col >= 1 and is_whitespace(col_value) do
     col = col - 1
     col_value = doc:get_char(line, col)
   end
+
+  -- Handle wrap to end of last line.
+  if col == 0 and line > 1 then
+    line = line - 1
+    col = #doc.lines[line] - 1
+    col_value = doc:get_char(line, col)
+  end
+
   while col >= 1 do
     if is_whitespace(col_value) then
       return line, col + 1
