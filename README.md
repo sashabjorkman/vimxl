@@ -5,7 +5,7 @@
 
 ![a teaser image of VimXL](teaser.png "LiteXL in action")
 
-Vim plugin for [Lite XL](https://lite-xl.com/), that hopefully doesn't suck this time!
+A faithful Vim plugin for [Lite XL](https://lite-xl.com/), that doesn't suck!
 
 ## 🚀 Installation
 Just do 

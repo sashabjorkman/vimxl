@@ -3,8 +3,8 @@
 
 local constants = require "plugins.vimxl.constants"
 
--- Only used for inner_word implementation. And for prev_char next_char.
--- TODO: Maybe reimplement and drop the dependency?
+-- Currently only used to forward prev_char next_char. 
+-- TODO: Maybe reimplement and drop the dependency? We want clamping anyway...
 local doc_translate = require "core.doc.translate"
 
 -- Used for non_word_chars
@@ -18,6 +18,17 @@ end
 ---@param char string
 local function is_whitespace(char)
   return constants.WHITESPACE:find(char, nil, true) ~= nil
+end
+
+---@param char string
+local function classify_type(char)
+  if is_whitespace(char) then
+    return 1
+  elseif is_non_word(char) then
+    return 2
+  else
+    return 3
+  end
 end
 
 -- Collection of translations implementing Vim-specific behaviour.
@@ -361,8 +372,32 @@ end
 
 ---@type vimxl.motion
 function vim_translate.inner_word(doc, line, col)
-  local l1, c1 = translate_prev_word_start_impl(doc, line, col)
-  local l2, c2 = doc_translate.end_of_word(doc, line, col)
+  local l1, c1 = line, col
+  local l2, c2 = line, col
+
+  local col_value = doc:get_char(line, col)
+  local initial_type = classify_type(col_value)
+
+  while c1 > 1 do
+    col = c1 - 1
+    col_value = doc:get_char(line, col)
+    local char_type = classify_type(col_value)
+    if initial_type ~= char_type then
+      break
+    else
+      c1 = col
+    end
+  end
+
+  while c2 < #doc.lines[line] do
+    c2 = c2 + 1
+    col_value = doc:get_char(line, c2)
+    local char_type = classify_type(col_value)
+    if initial_type ~= char_type then
+      break
+    end
+  end
+
   return l1, c1, l2, c2
 end
 
