@@ -128,11 +128,14 @@ vim_functions = {
     start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
-        state:yank_using_motion(motion, numerical_argument)
+        local full_text = state:yank_using_motion(motion, numerical_argument)
         for _, line, col in state.view.doc:get_selections(true) do
           state.view.doc:remove(motion(state.view.doc, line, col, state.view, numerical_argument))
         end
-        state:move_or_select(vim_translate.first_printable)
+        if full_text:match("\n$") then
+          -- We only want this for linewise motions.
+          state:move_or_select(vim_translate.first_printable)
+        end
       end, product_numerical_argument)
     end)
   end,

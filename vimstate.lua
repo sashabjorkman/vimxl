@@ -474,6 +474,7 @@ end
 
 ---@param motion vimxl.motion
 ---@param numerical_argument? number
+---@return string
 function VimState:yank_using_motion(motion, numerical_argument)
   local full_text = ""
   local text = ""
@@ -487,6 +488,7 @@ function VimState:yank_using_motion(motion, numerical_argument)
     end
   end
   system.set_clipboard(full_text)
+  return full_text
 end
 
 function VimState:escape_mode()
