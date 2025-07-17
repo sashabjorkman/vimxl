@@ -28,12 +28,12 @@ local VimState = Object:extend()
 ---However, the nil value is also treated as a valid value for the
 ---numerical argument, hence why it is optional.
 ---@see vimxl.vimstate.begin_command_with_numerical_argument
----@alias vimxl.perform_with_optional_number fun(view: vimxl.vimstate, n: number | nil)
+---@alias vimxl.perform_with_optional_number fun(state: vimxl.vimstate, n: number | nil)
 ---
 ---Stored inside of repeatable_commands.
 ---@see vimxl.perform_with_number For explanation on its sibling type.
 ---@see vimxl.vimstate.begin_naive_repeatable_command
----@alias vimxl.perform_no_number fun(view: vimxl.vimstate)
+---@alias vimxl.perform_no_number fun(state: vimxl.vimstate)
 ---
 ---Base type for everything that goes into command_history.
 ---@class vimxl.repeatable_command
@@ -306,18 +306,30 @@ end
 ---@param perform vimxl.perform_no_number
 ---@param numerical_argument? number
 function VimState:begin_naive_repeatable_command(perform, numerical_argument)
-  self.repeatable_commands = {
-    {
+  if self.mode ~= "n" then
+    table.insert(self.command_history, {
       ["type"] = "repeat_everything",
       ["number"] = numerical_argument or 1,
-    },
-    {
+    })
+    table.insert(self.command_history, {
       ["type"] = "command",
       ["perform"] = perform,
+    })
+    perform(self)
+  else
+    self.repeatable_commands = {
+      {
+        ["type"] = "repeat_everything",
+        ["number"] = numerical_argument or 1,
+      },
+      {
+        ["type"] = "command",
+        ["perform"] = perform,
+      }
     }
-  }
 
-  self.repeat_requested = true
+    self.repeat_requested = true
+  end
 end
 
 ---The most advanced case where the command decides by
@@ -328,7 +340,7 @@ end
 ---@param perform vimxl.perform_with_optional_number
 ---@param numerical_argument? number
 function VimState:begin_command_supporting_numerical_argument(perform, numerical_argument)
-  if self.mode == "i" then
+  if self.mode ~= "n" then
     table.insert(self.command_history, {
       ["type"] = "command_supporting_number",
       ["perform"] = perform,
@@ -441,9 +453,10 @@ function VimState:set_mode(mode)
     -- Some history was recorded, so we can use that for the repeat command.
     if is_non_empty_history then
       self.repeatable_commands = self.command_history
-    else
+    elseif prev_mode ~= "n" then
       -- It's sad that just entering i mode without doing anything
       -- will clear the repeat buffer in Vim. But that's how Vim is.
+      -- But only if we are not just mashing the ESC button.
       self.repeatable_commands = {}
     end
     self.command_history = {}

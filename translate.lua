@@ -37,7 +37,7 @@ end
 local vim_translate = {}
 
 ---@type vimxl.motion
-function vim_translate.start_of_doc_or_line(_, _, col, _, numerical_argument)
+function vim_translate.start_of_doc_or_line_number(_, _, col, _, numerical_argument)
   if numerical_argument ~= nil and numerical_argument > 0 then
     return numerical_argument, col
   else

@@ -13,6 +13,53 @@ local function product_with_strange_default(a, b)
   return (a or 1) * (b or 1)
 end
 
+---This function only exists so that indent and unindent in
+---normal mode may share their implementations.
+---@param start_state vimxl.vimstate
+---@param numerical_argument_operator? number
+---@param unindent boolean
+local function generic_normal_indent(start_state, numerical_argument_operator, unindent)
+  start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
+    local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
+    second_state:begin_naive_repeatable_command(function (state)
+      for _, line, col in state.view.doc:get_selections(true) do
+        local l1, c1, l2, c2 = motion(state.view.doc, line, col, state.view, product_numerical_argument)
+        l2 = l2 - 1
+        state.view.doc:indent_text(unindent, l1, c1, l2, c2)
+      end
+    end)
+  end)
+end
+
+---This function only exists so that indent and unindent in
+---visual mode may share their implementations.
+---@param start_state vimxl.vimstate
+---@param numerical_argument? number
+---@param unindent boolean
+local function generic_visual_indent(start_state, numerical_argument, unindent)
+  local lines = {}
+  local first_line1, _, first_line2 = start_state.view.doc:get_selection()
+  local first_line = math.min(first_line1, first_line2)
+
+  for _, l1, _, l2, _ in start_state.view.doc:get_selections() do
+    for line = math.min(l1, l2), math.max(l1, l2) do
+      table.insert(lines, line - first_line)
+    end
+  end
+  start_state:begin_naive_repeatable_command(function (state)
+    local start_line1, _, start_line2 = start_state.view.doc:get_selection()
+    local start_line = math.min(start_line1, start_line2)
+    for _, line in ipairs(lines) do
+      state.view.doc:indent_text(unindent, start_line + line, 0, start_line + line, 1)
+    end
+    -- Mimic Vim behaviour.
+    if #lines > 0 then
+      state.view.doc:move_to(vim_translate.first_printable, state.view)
+    end
+  end, numerical_argument)
+  start_state:set_mode("n")
+end
+
 ---A function that can be invoked through Vim keybinds.
 ---It can also be invoked through the command mode if put inside the 
 -- vim_visible_commands table. 
@@ -42,14 +89,10 @@ vim_functions = {
     state:set_mode("n")
   end,
   ["vimxl-visual:indent"] = function (start_state, numerical_argument)
-    start_state:begin_naive_repeatable_command(function (_)
-      command.perform("doc:indent")
-    end, numerical_argument)
+    generic_visual_indent(start_state, numerical_argument, false)
   end,
   ["vimxl-visual:unindent"] = function (start_state, numerical_argument)
-    start_state:begin_naive_repeatable_command(function (_)
-      command.perform("doc:unindent")
-    end, numerical_argument)
+    generic_visual_indent(start_state, numerical_argument, true)
   end,
 
   -- Normal mode specifics
@@ -151,6 +194,12 @@ vim_functions = {
       end
     end, numerical_argument)
   end,
+  ["vimxl-normal:indent"] = function (start_state, numerical_argument_operator)
+    generic_normal_indent(start_state, numerical_argument_operator, false)
+  end,
+  ["vimxl-normal:unindent"] = function (start_state, numerical_argument_operator)
+    generic_normal_indent(start_state, numerical_argument_operator, true)
+  end,
   ["vimxl-normal:repeat"] = function (state, numerical_argument)
     if numerical_argument ~= nil then
       for _, v in ipairs(state.repeatable_commands) do
@@ -163,10 +212,16 @@ vim_functions = {
     end
     state.repeat_requested = true
   end,
-  ["vimxl-normal:undo"] = function (_, numerical_argument)
+  ["vimxl-normal:undo"] = function (state, numerical_argument)
     local count = numerical_argument or 1
     for _ = 1, count do
       command.perform("doc:undo")
+    end
+    if state.mode == "n" then
+      -- Call this because we want to collapse any sections that LiteXL might have restored
+      -- during doc:undo.
+      state:escape_mode()
+      -- TODO: Use an actual function for this instead. ^
     end
   end,
   ["vimxl-normal:find"] = function (state, _)
