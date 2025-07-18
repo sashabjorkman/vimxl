@@ -78,6 +78,9 @@ local visual_mode = {
   ["d"] = "vimxl-visual:delete",
   [">"] = "vimxl-visual:indent",
   ["<"] = "vimxl-visual:unindent",
+  ["i"] = {
+    ["w"] = "vimxl-motion:select-inner-word",
+  },
 }
 
 ---@type vimxl.keybind_map

@@ -58,6 +58,13 @@ local function apply_patches()
     on_mouse_pressed(self, button, ...)
   end
 
+  local draw_overlay = DocView.draw_overlay
+  function DocView:draw_overlay()
+    draw_overlay(self)
+    if self.vim_state then
+      self.vim_state:draw_overlay()
+    end
+  end
 end
 
 return apply_patches

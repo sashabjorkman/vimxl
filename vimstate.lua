@@ -2,6 +2,8 @@ local core = require "core"
 local style = require "core.style"
 local command = require "core.command"
 local Object = require "core.object"
+local config = require "core.config"
+local ime = require "core.ime"
 
 local vim_functions = require "plugins.vimxl.functions"
 local vim_motions = require "plugins.vimxl.motions"
@@ -58,7 +60,7 @@ local VimState = Object:extend()
 ---
 ---@class vimxl.repeatable_select_to : vimxl.repeatable_command
 ---@field type "select_to"
----@field translate vimxl.motion
+---@field perform vimxl.perform_no_number
 ---
 ---@class vimxl.repeatable_move_to : vimxl.repeatable_command
 ---@field type "move_to"
@@ -116,7 +118,6 @@ function VimState:new(view)
   ---Should we record basic function calls like Doc:insert to history?
   ---This is mainly used for a less intrusive way of tracking autocomplete.
   self.track_primitives = false
-
 end
 ---This callback has a chance to be triggered after a valid motion
 ---is detected. However it can also never be called if the user fails
@@ -130,18 +131,112 @@ function VimState:expect_motion(cb)
   self.keymap = vim_keymap.motions
 end
 
+local function is_selection_going_forward(l1, c1, l2, c2)
+  return l1 > l2 or l1 == l2 and c1 > c2
+end
+
+---Implements the Vim visual mode of navigation
+---where the cursor is always on a character and not just
+---in between two.
+---@param doc core.doc
+---@param start_line number
+---@param start_col number
+---@param view core.docview
+---@param numerical_argument? number
+---@param translate_fn vimxl.motion
+---@param end_line number
+---@param end_col number
+local function vim_style_visual_select_to_impl(doc, start_line, start_col, view, numerical_argument, translate_fn, end_line, end_col)
+  -- Detect if a character is not currently selected and if so correct that.
+  if start_line == end_line and start_col == end_col then
+    start_col = start_col + 1
+  end
+
+  local was_neutral = start_line == end_line and start_col == end_col + 1
+  local was_going_forward = is_selection_going_forward(start_line, start_col, end_line, end_col)
+
+  -- Steal a character so that we go from having the cursor be
+  -- on a character to having it be between characters.
+  if was_going_forward then
+    start_col = start_col - 1
+  end
+
+  local l1, c1, l2, c2 = translate_fn(doc, start_line, start_col, view, numerical_argument)
+
+  local got_text_object = false
+
+  -- Got text object. Extend current extension.
+  if l2 ~= nil and c2 ~= nil then
+    -- Sort them. Such that the default selection is "going forward".
+    if not is_selection_going_forward(l1, c1, l2, c2) then
+      l1, c1, l2, c2 = l2, c2, l1, c1
+    end
+
+    if was_neutral then
+      got_text_object = true
+    elseif was_going_forward then
+      -- Is l2 & c2 further away from cursor? If so use that.
+      if is_selection_going_forward(l2, c2, l1, c1) then
+        l1 = l2
+        c1 = c2
+        -- l2 and c2 is later on.
+      end
+    else
+      -- Is l2 & c2 further away from cursor? If so use that.
+      if is_selection_going_forward(l1, c1, l2, c2) then
+        l1 = l2
+        c1 = c2
+        -- l2 and c2 is later on.
+      end
+    end
+  end
+
+  if not got_text_object then
+    -- Extend the selection because we were doing a simple movement.
+    l2 = end_line
+    c2 = end_col
+  end
+
+  local is_selecting = l1 ~= l2 or c1 ~= c2
+  local is_going_forward = is_selection_going_forward(l1, c1, l2, c2)
+
+  if is_selecting and was_going_forward and not is_going_forward then
+    c2 = c2 + 1
+  elseif is_selecting and not was_going_forward and is_going_forward then
+    c2 = c2 - 1
+  elseif not is_selecting or is_going_forward and not got_text_object then
+    -- Give back the character we stole earlier.
+     c1 = c1 + 1
+  end
+
+  -- If we are selecting only one character, then make it a normal "neutral" selection
+  -- which is to say that c1 should be greater than c2, i.e selection goes forward.
+  if l1 == l2 and c1 + 1 == c2 then
+    c1, c2 = c2, c1
+  end
+
+  return l1, c1, l2, c2
+end
+
 ---Make a movement/selection within the current document, but also
 ---record to history if necessary so that the movement may be repeated.
 ---@param translate_fn vimxl.motion
 ---@param numerical_argument? number 
 function VimState:move_or_select(translate_fn, numerical_argument)
   if self.mode == "v" then
-    self.view.doc:select_to(translate_fn, self.view, numerical_argument)
+    ---@param state vimxl.vimstate
+    local function vim_style_visual_select_to(state)
+      for idx, start_line, start_col, end_line, end_col in state.view.doc:get_selections() do
+        local l1, c1, l2, c2 = vim_style_visual_select_to_impl(state.view.doc, start_line, start_col, state.view, numerical_argument, translate_fn, end_line, end_col)
+        state.view.doc:set_selections(idx, l1, c1, l2, c2)
+      end
+    end
+
+    vim_style_visual_select_to(self)
+
     table.insert(self.command_history, {
       ["type"] = "select_to",
-      ["translate"] = function (doc, line, col, view)
-        return translate_fn(doc, line, col, view, numerical_argument)
-      end,
+      ["perform"] = vim_style_visual_select_to,
     })
   elseif self.mode == "i" then
     self.view.doc:move_to(translate_fn, self.view, numerical_argument)
@@ -389,7 +484,7 @@ function VimState:repeat_commands(minus_one)
       elseif v.type == "command_supporting_number" then
         v.perform(self, v.number)
       elseif v.type == "select_to" then
-        self.view.doc:select_to(v.translate, self)
+        v.perform(self)
       elseif v.type == "move_to" then
         self.view.doc:move_to(v.translate, self)
       elseif v.type == "remove_text" then
@@ -416,6 +511,11 @@ function VimState:set_correct_keymap()
   end
 end
 
+---@type vimxl.motion
+local function translate_noop(_, line, col)
+  return line, col
+end
+
 ---@param mode vimxl.mode
 function VimState:set_mode(mode)
   local prev_mode = self.mode
@@ -424,6 +524,11 @@ function VimState:set_mode(mode)
   if prev_mode == "n" and (mode == "i" or mode == "v") then
     -- During i and v we will track history. So make sure history is clean.
     self.command_history = {}
+
+    -- Make the cursor actually select something.
+    if mode == "v" then
+      self:move_or_select(translate_noop, 0)
+    end
   elseif mode == "n" then
     -- Send us back to where we started. Note that this is unlike doc:select-none 
     -- because doc:select-none sets the cursor to the end of the selection.
@@ -507,20 +612,43 @@ end
 ---@param x number
 ---@param y number
 function VimState:draw_caret(docview_draw_caret, x, y)
-    if self.mode == "i" then
+    if self.mode == "i" or ime.editing then
       return docview_draw_caret(self.view, x, y)
     end
 
-    local has_selection = #self.view.doc.selections <= 4
-                        and self.view.doc.selections[1] == self.view.doc.selections[3]
-                        and self.view.doc.selections[2] == self.view.doc.selections[4]
-
-    -- Only render the caret if we do not have a selection in non-insert mode...
-    if has_selection or self.mode == "v" then
+    -- Visual mode caret rendered in draw_overlay instead.
+    if self.mode ~= "v" then
       local lh = self.view:get_line_height()
       local w = self.view:get_font():get_width(" ")
       renderer.draw_rect(x, y, w, lh, style.caret)
     end
+end
+
+
+function VimState:draw_overlay()
+  if core.active_view == self.view and self.mode == "v" then
+    local min_line, max_line = self.view:get_visible_line_range()
+    local T = config.blink_period
+    local not_blinking = config.disable_blink or (core.blink_timer - core.blink_start) % T < T / 2
+
+    for _, l1, c1, l2, c2 in self.view.doc:get_selections() do
+      local in_viewport = l1 >= min_line and l1 <= max_line
+      if in_viewport
+      and system.window_has_focus()
+      and not ime.editing
+      and not_blinking then
+        if is_selection_going_forward(l1, c1, l2, c2) then
+          c1 = c1 - 1
+        end
+
+        -- Draw visual mode caret.
+        local x, y = self.view:get_line_screen_position(l1, c1)
+        local lh = self.view:get_line_height()
+        local w = self.view:get_font():get_width(" ")
+        renderer.draw_rect(x, y, w, lh, style.caret)
+      end
+    end
+  end
 end
 
 -- We react to this in order to put us in visual mode
