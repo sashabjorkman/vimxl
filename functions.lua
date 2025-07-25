@@ -130,7 +130,13 @@ vim_functions = {
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
         local full_text = state:yank_using_motion(motion, numerical_argument)
         for _, line, col in state.view.doc:get_selections(true) do
-          state.view.doc:remove(motion(state.view.doc, line, col, state.view, numerical_argument))
+          local l1, c1, l2, c2 = motion(state.view.doc, line, col, state.view, numerical_argument)
+          if l2 >= #state.view.doc.lines then
+            -- Handle the deletion of the last lines by removing an extra newline.
+            l1 = l1 - 1
+            c1 = #state.view.doc.lines[l1]
+          end
+          state.view.doc:remove(l1, c1, l2, c2)
         end
         if full_text:match("\n$") then
           -- We only want this for linewise motions.
