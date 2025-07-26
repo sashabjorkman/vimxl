@@ -73,18 +73,22 @@ vim_functions = {
   -- Visual mode specifics
 
   ["vimxl-visual:yank"] = function (state)
+    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     command.perform("doc:copy")
     state:set_mode("n")
   end,
   ["vimxl-visual:substitute"] = function (state)
+    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     command.perform("doc:cut")
     state:set_mode("i")
   end,
   ["vimxl-visual:change"] = function (state)
+    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     command.perform("doc:cut")
     state:set_mode("i")
   end,
   ["vimxl-visual:delete"] = function (state)
+    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     command.perform("doc:cut")
     state:set_mode("n")
   end,
@@ -93,6 +97,15 @@ vim_functions = {
   end,
   ["vimxl-visual:unindent"] = function (start_state, numerical_argument)
     generic_visual_indent(start_state, numerical_argument, true)
+  end,
+
+  -- Visual block mode specifics
+
+  ["vimxl-visual-block:append-to-start"] = function (state)
+    -- TODO: Handle numerical argument.
+    state:set_mode("i")
+    local _, c1, _, c2 = state.view.doc:get_selection()
+    state:move_or_select(vim_translate.nth_col, math.min(c1, c2))
   end,
 
   -- Normal mode specifics

@@ -303,7 +303,6 @@ function VimState:move_or_select(translate_fn, numerical_argument)
     local function vim_style_visual_block_select_to(state)
       local start_line, start_col = state.view.doc:get_selection()
       local _, _, end_line, end_col = state.view.doc:get_selection_idx(1)
-      core.error("%s, %s ends at %s, %s (last sel: %s)", start_line, start_col, end_line, end_col, state.view.doc.last_selection)
 
       -- Detect if a character is not currently selected and if so correct that.
       if start_col == end_col then
@@ -323,6 +322,7 @@ function VimState:move_or_select(translate_fn, numerical_argument)
       if state.mode == "v-block" and l2 ~= nil and c2 ~= nil then
         -- If we get a text object, just select that text object
         -- and enter ordinary visual mode. As is done in Vim.
+        -- TOOD: This doesn't actually seem entirely correct, some text objects like inner word don't do this, while "i(" does.
         state:set_mode("v")
         if c1 == c2 then
           c1 = c1 + 1 -- TODO: c2 would be better
@@ -639,8 +639,13 @@ function VimState:set_mode(mode)
   elseif mode == "n" then
     -- Send us back to where we started. Note that this is unlike doc:select-none 
     -- because doc:select-none sets the cursor to the end of the selection.
-    local _, _, l2, c2 = self.view.doc:get_selection_idx(1)
-    self.view.doc:set_selection(l2, c2)
+    if prev_mode == "v" or prev_mode == "v-block" then
+      local l1, c1 = self.view.doc:get_selection()
+      self.view.doc:set_selection(l1, c1 - 1)
+    else
+      local _, _, l2, c2 = self.view.doc:get_selection_idx(1)
+      self.view.doc:set_selection(l2, c2)
+    end
 
     -- We have to scan to see if there is a
     -- repeat_everything command in there and see if its

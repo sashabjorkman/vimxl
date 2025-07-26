@@ -89,6 +89,7 @@ local visual_block_mode = {
   ["s"] = "vimxl-visual:substitute",
   ["c"] = "vimxl-visual:change",
   ["d"] = "vimxl-visual:delete",
+  ["I"] = "vimxl-visual-block:append-to-start",
   -- TODO: Implement blockwise for them:
   --[">"] = "vimxl-visual-block:indent",
   --["<"] = "vimxl-visual-block:unindent",

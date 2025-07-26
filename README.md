@@ -34,13 +34,6 @@ Here is a non-exhaustive list of features currently implemented:
 * A lot of comments.
 * ... and more!
 
-### 🚫 Missing Features
-If you make heavy use of visual block mode (Ctrl+V)
-then VimXL is not quite ready for you yet.
-Although much of what you would do with visual block mode
-can easily be done through Lite XL's multi-cursor support.
-That said, it's understandable if Vim muscle memory makes this a deal-breaker.
-
 ## Philosophy
 The aim of VimXL is to be as non-intrusive as possible.
 And generally to be a good citizen in the Lite XL world.
