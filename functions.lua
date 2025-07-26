@@ -103,6 +103,8 @@ vim_functions = {
 
   ["vimxl-visual-block:append-to-start"] = function (state)
     -- TODO: Handle numerical argument.
+    -- TODO: Exiting should put us back where we started, not the end of the multiline edit.
+    -- TODO: Same applies to delete and other commands for that matter.
     state:set_mode("i")
     local _, c1, _, c2 = state.view.doc:get_selection()
     state:move_or_select(vim_translate.nth_col, math.min(c1, c2))

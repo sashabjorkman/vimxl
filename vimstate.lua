@@ -797,6 +797,7 @@ end
 
 ---@param button core.view.mousebutton
 function VimState:on_mouse_pressed(button)
+  -- TODO: Handle visual block select as well.
   if self.mode == "v" and button == "left" then
     self:escape_mode()
   end
