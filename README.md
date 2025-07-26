@@ -22,6 +22,7 @@ Which is usually `~/.config/lite-xl/plugins`
 Here is a non-exhaustive list of features currently implemented:
 * The repeat command (`.`)
 * Insert mode, visual mode, normal mode, command mode
+* Limited visual blockwise mode
 * Search support
 * Yank, delete, change, substitute
 * Indent, unindent
