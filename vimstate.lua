@@ -19,7 +19,7 @@ local constants = require "plugins.vimxl.constants"
 local VimState = Object:extend()
 
 ---All possible modes supported by VimXL by default.
----@alias vimxl.mode "i"|"v"|"n"
+---@alias vimxl.mode "i"|"v"|"n"|"v-block"
 
 ---Stuff relating to command_history:
 
@@ -79,6 +79,7 @@ function VimState:__tostring() return "VimState" end
 function VimState:new(view)
   VimState.super.new(self)
 
+  ---The view that this instance of Vim-emulation is attached to.
   self.view = view
 
   ---Which Vim mode we are emulating, i.e normal-mode, insert-mode, etc...
@@ -206,16 +207,75 @@ local function vim_style_visual_select_to_impl(doc, start_line, start_col, view,
     c2 = c2 - 1
   elseif not is_selecting or is_going_forward and not got_text_object then
     -- Give back the character we stole earlier.
-     c1 = c1 + 1
+    c1 = c1 + 1
   end
 
   -- If we are selecting only one character, then make it a normal "neutral" selection
   -- which is to say that c1 should be greater than c2, i.e selection goes forward.
   if l1 == l2 and c1 + 1 == c2 then
-    c1, c2 = c2, c1
+    c1, c2 = c2 or c1, c1 or c2
   end
 
   return l1, c1, l2, c2
+end
+
+---Implements the Vim visual block mode of navigation
+---where the cursor is always on a character and not just
+---in between two.
+---@param l1 number
+---@param c1 number
+---@param l2 number
+---@param c2 number
+---@param was_going_forward boolean
+local function vim_style_visual_block_select_to_impl(l1, c1, l2, c2, was_going_forward)
+  local is_selecting = c1 ~= c2
+  local is_going_forward = c1 > c2
+
+  if is_selecting and was_going_forward and not is_going_forward then
+    c2 = c2 + 1
+  elseif is_selecting and not was_going_forward and is_going_forward then
+    c2 = c2 - 1
+  elseif not is_selecting or is_going_forward then
+    -- Give back the character we stole earlier.
+    c1 = c1 + 1
+  end
+
+  -- If we are selecting only one character, then make it a normal "neutral" selection
+  -- which is to say that c1 should be greater than c2, i.e selection goes forward.
+  if c1 + 1 == c2 then
+    c1, c2 = c2 or c1, c1 or c2
+  end
+
+  return l1, c1, l2, c2
+end
+
+---@param l1 number
+---@param c1 number
+---@param l2 number
+---@param c2 number
+function VimState:create_block_selection(l1, c1, l2, c2)
+
+  local new_selection = {}
+
+  local increment = l1 > l2 and 1 or -1
+
+  local count = 1
+  -- Not the most elegant way of doing this. But sadly add_selection
+  -- keeps the selections "sorted"... Which in most cases is probably a good thing,
+  -- but in our case we use it to know which is the head and tail.
+  -- TODO: This probably should be redone such that we track that elsewhere.
+  for line = l2, l1, increment do
+    new_selection[count] = line
+    count = count + 1
+    new_selection[count] = c1
+    count = count + 1
+    new_selection[count] = line
+    count = count + 1
+    new_selection[count] = c2
+    count = count + 1
+  end
+  self.view.doc.selections = new_selection
+  self.view.doc.last_selection = (count - 1) / 4
 end
 
 ---Make a movement/selection within the current document, but also
@@ -226,10 +286,10 @@ function VimState:move_or_select(translate_fn, numerical_argument)
   if self.mode == "v" then
     ---@param state vimxl.vimstate
     local function vim_style_visual_select_to(state)
-      for idx, start_line, start_col, end_line, end_col in state.view.doc:get_selections() do
-        local l1, c1, l2, c2 = vim_style_visual_select_to_impl(state.view.doc, start_line, start_col, state.view, numerical_argument, translate_fn, end_line, end_col)
-        state.view.doc:set_selections(idx, l1, c1, l2, c2)
-      end
+        for idx, start_line, start_col, end_line, end_col in state.view.doc:get_selections() do
+          local l1, c1, l2, c2 = vim_style_visual_select_to_impl(state.view.doc, start_line, start_col, state.view, numerical_argument, translate_fn, end_line, end_col)
+          state.view.doc:set_selections(idx, l1, c1, l2, c2)
+        end
     end
 
     vim_style_visual_select_to(self)
@@ -237,6 +297,49 @@ function VimState:move_or_select(translate_fn, numerical_argument)
     table.insert(self.command_history, {
       ["type"] = "select_to",
       ["perform"] = vim_style_visual_select_to,
+    })
+  elseif self.mode == "v-block" then
+    ---@param state vimxl.vimstate
+    local function vim_style_visual_block_select_to(state)
+      local start_line, start_col = state.view.doc:get_selection()
+      local _, _, end_line, end_col = state.view.doc:get_selection_idx(1)
+      core.error("%s, %s ends at %s, %s (last sel: %s)", start_line, start_col, end_line, end_col, state.view.doc.last_selection)
+
+      -- Detect if a character is not currently selected and if so correct that.
+      if start_col == end_col then
+        start_col = start_col + 1
+      end
+
+      local was_going_forward = start_col > end_col
+
+      -- Steal a character so that we go from having the cursor be
+      -- on a character to having it be between characters.
+      if was_going_forward then
+        start_col = start_col - 1
+      end
+
+      local l1, c1, l2, c2 = translate_fn(state.view.doc, start_line, start_col, state.view, numerical_argument)
+
+      if state.mode == "v-block" and l2 ~= nil and c2 ~= nil then
+        -- If we get a text object, just select that text object
+        -- and enter ordinary visual mode. As is done in Vim.
+        state:set_mode("v")
+        if c1 == c2 then
+          c1 = c1 + 1 -- TODO: c2 would be better
+        end
+        state.view.doc.set_selection(l1, c1, l2, c2)
+        return
+      end
+
+      l1, c1, l2, c2 = vim_style_visual_block_select_to_impl(l1, c1, end_line, end_col, was_going_forward)
+      state:create_block_selection(l1, c1, l2, c2)
+    end
+
+    vim_style_visual_block_select_to(self)
+
+    table.insert(self.command_history, {
+      ["type"] = "select_to",
+      ["perform"] = vim_style_visual_block_select_to,
     })
   elseif self.mode == "i" then
     self.view.doc:move_to(translate_fn, self.view, numerical_argument)
@@ -508,6 +611,10 @@ function VimState:set_correct_keymap()
     self.keymap = vim_keymap.normal
   elseif self.mode == "v" then
     self.keymap = vim_keymap.visual
+  elseif self.mode == "v-block" then
+    self.keymap = vim_keymap.visual_block
+  else
+    core.error("VimState:set_correct_keymap() has gone insane")
   end
 end
 
@@ -521,12 +628,12 @@ function VimState:set_mode(mode)
   local prev_mode = self.mode
   self.mode = mode
   self:set_correct_keymap()
-  if prev_mode == "n" and (mode == "i" or mode == "v") then
+  if prev_mode == "n" and (mode == "i" or mode == "v" or mode == "v-block") then
     -- During i and v we will track history. So make sure history is clean.
     self.command_history = {}
 
     -- Make the cursor actually select something.
-    if mode == "v" then
+    if mode == "v" or mode == "v-block" then
       self:move_or_select(translate_noop, 0)
     end
   elseif mode == "n" then
@@ -617,38 +724,62 @@ function VimState:draw_caret(docview_draw_caret, x, y)
     end
 
     -- Visual mode caret rendered in draw_overlay instead.
-    if self.mode ~= "v" then
+    if self.mode ~= "v" and self.mode ~= "v-block" then
       local lh = self.view:get_line_height()
       local w = self.view:get_font():get_width(" ")
       renderer.draw_rect(x, y, w, lh, style.caret)
     end
 end
 
+---@param state vimxl.vimstate
+---@param not_blinking boolean
+---@param l1 number
+---@param c1 number
+---@param l2 number
+---@param c2 number
+---@param min_line number
+---@param max_line number
+local function draw_cursor_for_selection(state, not_blinking, l1, c1, l2, c2, min_line, max_line)
+    local in_viewport = l1 >= min_line and l1 <= max_line
+    if in_viewport
+    and system.window_has_focus()
+    and not ime.editing
+    and not_blinking then
+      if is_selection_going_forward(l1, c1, l2, c2) then
+        c1 = c1 - 1
+      end
+
+      -- Draw visual mode caret.
+      local x, y = state.view:get_line_screen_position(l1, c1)
+      local lh = state.view:get_line_height()
+      local w = state.view:get_font():get_width(" ")
+      renderer.draw_rect(x, y, w, lh, style.caret)
+    end
+end
 
 function VimState:draw_overlay()
-  if core.active_view == self.view and self.mode == "v" then
-    local min_line, max_line = self.view:get_visible_line_range()
-    local T = config.blink_period
-    local not_blinking = config.disable_blink or (core.blink_timer - core.blink_start) % T < T / 2
-
-    for _, l1, c1, l2, c2 in self.view.doc:get_selections() do
-      local in_viewport = l1 >= min_line and l1 <= max_line
-      if in_viewport
-      and system.window_has_focus()
-      and not ime.editing
-      and not_blinking then
-        if is_selection_going_forward(l1, c1, l2, c2) then
-          c1 = c1 - 1
-        end
-
-        -- Draw visual mode caret.
-        local x, y = self.view:get_line_screen_position(l1, c1)
-        local lh = self.view:get_line_height()
-        local w = self.view:get_font():get_width(" ")
-        renderer.draw_rect(x, y, w, lh, style.caret)
-      end
-    end
+  if core.active_view ~= self.view then
+    return
   end
+
+  if self.mode ~= "v" and self.mode ~= "v-block" then
+    return
+  end
+
+  local min_line, max_line = self.view:get_visible_line_range()
+  local T = config.blink_period
+  local not_blinking = config.disable_blink or (core.blink_timer - core.blink_start) % T < T / 2
+
+  if self.mode == "v-block" then
+    local l1, c1, l2, c2 = self.view.doc:get_selection()
+    draw_cursor_for_selection(self, not_blinking, l1, c1, l2, c2, min_line, max_line)
+    return
+  end
+
+  for _, l1, c1, l2, c2 in self.view.doc:get_selections() do
+    draw_cursor_for_selection(self, not_blinking, l1, c1, l2, c2, min_line, max_line)
+  end
+
 end
 
 -- We react to this in order to put us in visual mode

@@ -18,5 +18,8 @@ constants.MOTION_LINE_REPEAT = 11
 -- digit has been entered yet. Used to bind goto first column.
 constants.LEADING_ZERO = 12
 
+-- For passing the ctrl+v as a "key" to VimState.
+constants.CTRL_V = 13
+
 -- Constants used in more than one file.
 return constants

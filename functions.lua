@@ -100,6 +100,9 @@ vim_functions = {
   ["vimxl-normal:visual-mode"] = function (state)
     state:set_mode("v")
   end,
+  ["vimxl-normal:visual-block-mode"] = function (state)
+    state:set_mode("v-block")
+  end,
   ["vimxl-normal:insert-mode"] = function (state, numerical_argument)
     state:set_mode("i")
     state:begin_repeatable_history(numerical_argument)

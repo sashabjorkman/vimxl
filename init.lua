@@ -7,6 +7,7 @@ local DocView = require "core.docview"
 local apply_docview_patches = require "plugins.vimxl.docview-patcher"
 local apply_tracking_patches = require "plugins.vimxl.chronicle"
 local apply_autocomplete_patches = require "plugins.vimxl.autocomplete-patcher"
+local constants = require "plugins.vimxl.constants"
 local vim_translate = require "plugins.vimxl.translate"
 local VimState = require "plugins.vimxl.vimstate"
 
@@ -59,6 +60,9 @@ command.add(vim_non_i_mode_predicate, {
   ["vimxl:newline"] = function ()
     core.active_view.vim_state:on_text_input("\n")
   end,
+  ["vimxl:enter-block-mode"] = function ()
+    core.active_view.vim_state:on_text_input(constants.CTRL_V)
+  end
 })
 
 command.add(DocView, {

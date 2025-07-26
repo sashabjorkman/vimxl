@@ -84,8 +84,24 @@ local visual_mode = {
 }
 
 ---@type vimxl.keybind_map
+local visual_block_mode = {
+  ["y"] = "vimxl-visual:yank",
+  ["s"] = "vimxl-visual:substitute",
+  ["c"] = "vimxl-visual:change",
+  ["d"] = "vimxl-visual:delete",
+  -- TODO: Implement blockwise for them:
+  --[">"] = "vimxl-visual-block:indent",
+  --["<"] = "vimxl-visual-block:unindent",
+  ["i"] = {
+    ["w"] = "vimxl-motion:select-inner-word",
+  },
+}
+
+
+---@type vimxl.keybind_map
 local normal_mode = {
   ["v"] = "vimxl-normal:visual-mode",
+  [constants.CTRL_V] = "vimxl-normal:visual-block-mode",
   ["i"] = "vimxl-normal:insert-mode",
   ["u"] = "vimxl-normal:undo",
   ["I"] = "vimxl-normal:append-to-start",
@@ -109,6 +125,7 @@ local normal_mode = {
 for k, v in pairs(normal_and_visual_mode) do
   normal_mode[k] = v
   visual_mode[k] = v
+  visual_block_mode[k] = v
 end
 
 -- Applies globally. This uses the Lite-XL keymap because the Vim-mode keymap
@@ -122,6 +139,7 @@ keymap.add {
   ["pageup"] = { "vimxl:move-to-previous-page" },
   ["pagedown"] = { "vimxl:move-to-next-page" },
   ["ctrl+r"] = { "vimxl:redo" },
+  ["ctrl+v"] = { "vimxl:enter-block-mode" },
   ["return"] = { "vimxl:newline" },
   ["keypad enter"] = { "vimxl:newline" },
 }
@@ -131,4 +149,5 @@ return {
   ["motions"] = motions,
   ["normal"] = normal_mode,
   ["visual"] = visual_mode,
+  ["visual_block"] = visual_block_mode,
 }
