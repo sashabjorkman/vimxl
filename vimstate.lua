@@ -601,6 +601,8 @@ function VimState:repeat_commands(minus_one)
   end
 end
 
+local empty_keymap_for_i_mode = {}
+
 function VimState:set_correct_keymap()
   -- Clear it, otherwise we have to set keymap to
   -- a map containing motions. We don't want that as
@@ -613,6 +615,8 @@ function VimState:set_correct_keymap()
     self.keymap = vim_keymap.visual
   elseif self.mode == "v-block" then
     self.keymap = vim_keymap.visual_block
+  elseif self.mode == "i" then
+    self.keymap = empty_keymap_for_i_mode
   else
     core.error("VimState:set_correct_keymap() has gone insane")
   end
