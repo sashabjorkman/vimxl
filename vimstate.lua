@@ -544,7 +544,7 @@ function VimState:on_text_input(text)
   elseif as_function ~= nil and self.operator_got_motion_cb ~= nil then
     core.error("Expected motion but got Vim function")
   elseif as_function ~= nil then
-    -- Just a normal binded key, probably.
+    -- Just a normal bound key, probably.
     as_function(self, self.numerical_argument)
 
     if self.operator_got_motion_cb ~= nil then
@@ -558,7 +558,7 @@ function VimState:on_text_input(text)
     reset_numerical_argument = false
     reset_keymap = false
   elseif lookup_type == "nil" then
-    core.error("Key %s not binded", text)
+    core.error("Key %s not bound", text)
   else
     core.error("Something is wrong with the Vim if-else chain")
   end
