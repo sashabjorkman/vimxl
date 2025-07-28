@@ -98,10 +98,26 @@ local visual_block_mode = {
   },
 }
 
+---@type vimxl.keybind_map
+local visual_line_mode = {
+  ["y"] = "vimxl-visual:yank",
+  ["s"] = "vimxl-visual:substitute",
+  ["c"] = "vimxl-visual:change",
+  ["d"] = "vimxl-visual:delete",
+  -- TODO: Implement linewise for them:
+  --["I"] = "",
+  --[">"] = "vimxl-visual-block:indent",
+  --["<"] = "vimxl-visual-block:unindent",
+  ["i"] = {
+    ["w"] = "vimxl-motion:select-inner-word",
+  },
+}
+
 
 ---@type vimxl.keybind_map
 local normal_mode = {
   ["v"] = "vimxl-normal:visual-mode",
+  ["V"] = "vimxl-normal:visual-line-mode",
   [constants.CTRL_V] = "vimxl-normal:visual-block-mode",
   ["i"] = "vimxl-normal:insert-mode",
   ["u"] = "vimxl-normal:undo",
@@ -127,6 +143,7 @@ for k, v in pairs(normal_and_visual_mode) do
   normal_mode[k] = v
   visual_mode[k] = v
   visual_block_mode[k] = v
+  visual_line_mode[k] = v
 end
 
 -- Applies globally. This uses the Lite-XL keymap because the Vim-mode keymap
@@ -151,4 +168,5 @@ return {
   ["normal"] = normal_mode,
   ["visual"] = visual_mode,
   ["visual_block"] = visual_block_mode,
+  ["visual_line"] = visual_line_mode,
 }

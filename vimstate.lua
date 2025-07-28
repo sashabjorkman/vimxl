@@ -19,7 +19,7 @@ local constants = require "plugins.vimxl.constants"
 local VimState = Object:extend()
 
 ---All possible modes supported by VimXL by default.
----@alias vimxl.mode "i"|"v"|"n"|"v-block"
+---@alias vimxl.mode "i"|"v"|"n"|"v-block"|"v-line"
 
 ---Stuff relating to command_history:
 
@@ -278,6 +278,40 @@ function VimState:create_block_selection(l1, c1, l2, c2)
   self.view.doc.last_selection = (count - 1) / 4
 end
 
+---Implements linewise visual select for us.
+---@param doc core.doc
+---@param cursor_line number
+---@param cursor_col number
+---@param start_line number
+---@param end_line number
+---@param was_going_forward boolean
+local function vim_style_visual_line_select_impl(doc, cursor_line, cursor_col, start_line, end_line, was_going_forward)
+  local is_going_forward = cursor_line >= end_line
+  local is_neutral = cursor_line == end_line and end_line == start_line
+
+  if was_going_forward and not is_going_forward then
+    -- We switched sides.
+    end_line = start_line
+    start_line = cursor_line
+  elseif not was_going_forward and is_going_forward then
+    -- We also switched sides here.
+    start_line = end_line
+    end_line = cursor_line
+  elseif is_going_forward then
+    end_line = cursor_line
+  else
+    start_line = cursor_line
+  end
+
+  if start_line > end_line then
+    start_line, end_line = end_line, start_line
+  end
+
+  doc.selections = {}
+  doc:add_selection(cursor_line, cursor_col, end_line, #doc.lines[end_line])
+  doc:add_selection(cursor_line, cursor_col, start_line, 0)
+end
+
 ---Make a movement/selection within the current document, but also
 ---record to history if necessary so that the movement may be repeated.
 ---@param translate_fn vimxl.motion
@@ -325,7 +359,7 @@ function VimState:move_or_select(translate_fn, numerical_argument)
         -- TOOD: This doesn't actually seem entirely correct, some text objects like inner word don't do this, while "i(" does.
         state:set_mode("v")
         if c1 == c2 then
-          c1 = c1 + 1 -- TODO: c2 would be better
+          c1 = c1 + 1
         end
         state.view.doc.set_selection(l1, c1, l2, c2)
         return
@@ -333,6 +367,40 @@ function VimState:move_or_select(translate_fn, numerical_argument)
 
       l1, c1, l2, c2 = vim_style_visual_block_select_to_impl(l1, c1, end_line, end_col, was_going_forward)
       state:create_block_selection(l1, c1, l2, c2)
+    end
+
+    vim_style_visual_block_select_to(self)
+
+    table.insert(self.command_history, {
+      ["type"] = "select_to",
+      ["perform"] = vim_style_visual_block_select_to,
+    })
+  elseif self.mode == "v-line" then
+    ---@param state vimxl.vimstate
+    local function vim_style_visual_block_select_to(state)
+      -- We try to get the last added and something else if possible.
+      local not_last_selection = state.view.doc.last_selection > 1 and 1 or (#state.view.doc.selections / 4)
+      local _, _, start_line = state.view.doc:get_selection_idx(not_last_selection)
+      local cursor_line, cursor_col, end_line = state.view.doc:get_selection_idx(state.view.doc.last_selection)
+
+      -- If cursor was at the end of our selection then we were moving forward.
+      local was_going_forward = cursor_line == end_line
+
+      local l1, c1, l2, c2 = translate_fn(state.view.doc, cursor_line, cursor_col, state.view, numerical_argument)
+
+      if state.mode == "v-line" and l2 ~= nil and c2 ~= nil then
+        -- If we get a text object, just select that text object
+        -- and enter ordinary visual mode. As is done in Vim.
+        -- TOOD: This doesn't actually seem entirely correct, some text objects like inner word don't do this, while "i(" does.
+        state:set_mode("v")
+        if c1 == c2 then
+          c1 = c1 + 1
+        end
+        state.view.doc.set_selection(l1, c1, l2, c2)
+        return
+      end
+
+      vim_style_visual_line_select_impl(state.view.doc, l1, c1, start_line, end_line, was_going_forward)
     end
 
     vim_style_visual_block_select_to(self)
@@ -615,6 +683,8 @@ function VimState:set_correct_keymap()
     self.keymap = vim_keymap.visual
   elseif self.mode == "v-block" then
     self.keymap = vim_keymap.visual_block
+  elseif self.mode == "v-line" then
+    self.keymap = vim_keymap.visual_line
   elseif self.mode == "i" then
     self.keymap = empty_keymap_for_i_mode
   else
@@ -632,12 +702,12 @@ function VimState:set_mode(mode)
   local prev_mode = self.mode
   self.mode = mode
   self:set_correct_keymap()
-  if prev_mode == "n" and (mode == "i" or mode == "v" or mode == "v-block") then
+  if prev_mode == "n" and (mode == "i" or mode == "v" or mode == "v-block" or mode == "v-line") then
     -- During i and v we will track history. So make sure history is clean.
     self.command_history = {}
 
     -- Make the cursor actually select something.
-    if mode == "v" or mode == "v-block" then
+    if mode == "v" or mode == "v-block" or mode == "v-line" then
       self:move_or_select(translate_noop, 0)
     end
   elseif mode == "n" then

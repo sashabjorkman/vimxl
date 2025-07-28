@@ -115,6 +115,9 @@ vim_functions = {
   ["vimxl-normal:visual-mode"] = function (state)
     state:set_mode("v")
   end,
+  ["vimxl-normal:visual-line-mode"] = function (state)
+    state:set_mode("v-line")
+  end,
   ["vimxl-normal:visual-block-mode"] = function (state)
     state:set_mode("v-block")
   end,

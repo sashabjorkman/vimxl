@@ -81,7 +81,7 @@ local function patch_command_for_tracking(k, v)
   -- ideally we'd store this information somewhere smarter:
 
   ---@class core.command.command
-  ---@field old_perform fun(...: any)
+  ---@field old_perform? fun(...: any)
 
   if k == "doc:undo"
   or k == "doc:redo" then
