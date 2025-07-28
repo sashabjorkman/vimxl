@@ -31,25 +31,40 @@ local function generic_normal_indent(start_state, numerical_argument_operator, u
   end)
 end
 
+local function unselect_newline(l1, c1, l2, c2)
+  if l1 > 1 and c1 <= 1 then
+    l1 = l1 - 1
+  end
+  if l2 > 1 and c2 <= 1 then
+    l2 = l2 - 1
+  end
+  return l1, l2
+end
+
 ---This function only exists so that indent and unindent in
 ---visual mode may share their implementations.
 ---@param start_state vimxl.vimstate
 ---@param numerical_argument? number
 ---@param unindent boolean
 local function generic_visual_indent(start_state, numerical_argument, unindent)
+  -- TODO: Perhaps handle block-mode here as well?
+
   local lines = {}
-  local first_line1, _, first_line2 = start_state.view.doc:get_selection()
+  local first_line1, first_line2 = unselect_newline(start_state.view.doc:get_selection())
   local first_line = math.min(first_line1, first_line2)
 
-  for _, l1, _, l2, _ in start_state.view.doc:get_selections() do
+  for _, l1, c1, l2, c2 in start_state.view.doc:get_selections() do
+    l1, l2 = unselect_newline(l1, c1, l2, c2)
+    
     for line = math.min(l1, l2), math.max(l1, l2) do
-      table.insert(lines, line - first_line)
+      --table.insert(lines, line - first_line)
+      lines[line - first_line] = true
     end
   end
   start_state:begin_naive_repeatable_command(function (state)
-    local start_line1, _, start_line2 = start_state.view.doc:get_selection()
+    local start_line1, start_line2 = unselect_newline(start_state.view.doc:get_selection())
     local start_line = math.min(start_line1, start_line2)
-    for _, line in ipairs(lines) do
+    for line in ipairs(lines) do
       state.view.doc:indent_text(unindent, start_line + line, 0, start_line + line, 1)
     end
     -- Mimic Vim behaviour.
@@ -58,6 +73,39 @@ local function generic_visual_indent(start_state, numerical_argument, unindent)
     end
   end, numerical_argument)
   start_state:set_mode("n")
+end
+
+---@param state vimxl.vimstate
+---@param delete boolean
+local function visual_mode_copy(state, delete)
+  -- TODO: For block mode, we can use core.cursor_clipboard_whole_line to paste in the correct manner.
+
+  local separator = ""
+
+  if state.mode == "v-block" then
+    separator = "\n"
+  end
+
+  ---@type core.doc
+  local doc = state.view.doc
+  
+  local full_text = ""
+  local text = ""
+  core.cursor_clipboard = {}
+  core.cursor_clipboard_whole_line = {}
+  for idx, line1, col1, line2, col2 in doc:get_selections(true, true) do
+    if line1 ~= line2 or col1 ~= col2 then
+      text = doc:get_text(line1, col1, line2, col2)
+      full_text = full_text == "" and text or (text .. separator .. full_text)
+      core.cursor_clipboard_whole_line[idx] = separator == "\n"
+      if delete then
+        doc:delete_to_cursor(idx, 0)
+      end
+    end
+    core.cursor_clipboard[idx] = text
+  end
+  core.cursor_clipboard["full"] = full_text
+  system.set_clipboard(full_text)
 end
 
 ---A function that can be invoked through Vim keybinds.
@@ -74,26 +122,22 @@ vim_functions = {
 
   ["vimxl-visual:yank"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    -- TOOD: Also doesn't work perfectly for line mode copy because cut_or_copy inserts spaces between selections...
-    command.perform("doc:copy")
+    visual_mode_copy(state, false)
     state:set_mode("n")
   end,
   ["vimxl-visual:substitute"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    -- TOOD: Also doesn't work perfectly for line mode copy because cut_or_copy inserts spaces between selections...
-    command.perform("doc:cut")
+    visual_mode_copy(state, true)
     state:set_mode("i")
   end,
   ["vimxl-visual:change"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    -- TOOD: Also doesn't work perfectly for line mode copy because cut_or_copy inserts spaces between selections...
-    command.perform("doc:cut")
+    visual_mode_copy(state, true)
     state:set_mode("i")
   end,
   ["vimxl-visual:delete"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    -- TOOD: Also doesn't work perfectly for line mode copy because cut_or_copy inserts spaces between selections...
-    command.perform("doc:cut")
+    visual_mode_copy(state, true)
     state:set_mode("n")
   end,
   ["vimxl-visual:indent"] = function (start_state, numerical_argument)

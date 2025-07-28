@@ -712,6 +712,10 @@ end
 function VimState:set_mode(mode)
   local prev_mode = self.mode
   self.mode = mode
+
+  -- We don't want the user to think that we are slow.
+  core.blink_reset()
+  
   self:set_correct_keymap()
   if prev_mode == "n" and (mode == "i" or mode == "v" or mode == "v-block" or mode == "v-line") then
     -- During i and v we will track history. So make sure history is clean.

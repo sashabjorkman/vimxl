@@ -104,10 +104,10 @@ local visual_line_mode = {
   ["s"] = "vimxl-visual:substitute",
   ["c"] = "vimxl-visual:change",
   ["d"] = "vimxl-visual:delete",
-  -- TODO: Implement linewise for them:
+  -- TODO: It should just enter I mode in the normal way apparently...
   --["I"] = "",
-  --[">"] = "vimxl-visual-block:indent",
-  --["<"] = "vimxl-visual-block:unindent",
+  [">"] = "vimxl-visual:indent",
+  ["<"] = "vimxl-visual:unindent",
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
   },
