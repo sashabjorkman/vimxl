@@ -308,7 +308,7 @@ local function vim_style_visual_line_select_impl(doc, cursor_line, cursor_col, s
   end
 
   doc.selections = {}
-  doc:add_selection(cursor_line, cursor_col, end_line, #doc.lines[end_line])
+  doc:add_selection(cursor_line, cursor_col, end_line + 1, 0)
   doc:add_selection(cursor_line, cursor_col, start_line, 0)
 end
 
@@ -380,8 +380,19 @@ function VimState:move_or_select(translate_fn, numerical_argument)
     local function vim_style_visual_block_select_to(state)
       -- We try to get the last added and something else if possible.
       local not_last_selection = state.view.doc.last_selection > 1 and 1 or (#state.view.doc.selections / 4)
-      local _, _, start_line = state.view.doc:get_selection_idx(not_last_selection)
-      local cursor_line, cursor_col, end_line = state.view.doc:get_selection_idx(state.view.doc.last_selection)
+      local _, _, start_line, start_col = state.view.doc:get_selection_idx(not_last_selection)
+      local cursor_line, cursor_col, end_line, end_col = state.view.doc:get_selection_idx(state.view.doc.last_selection)
+
+      -- In my opinion it should be end_line we are decreasing.
+      -- But that doesn't work for some reason.
+      -- Logging revelas that start_line and end_line have their names swapped.
+      -- But was_going_forward appears to be working correctly so
+      -- I really don't know what is happening. Perhaps was_going_forward is wrongly named as well?
+      -- TODO: Investigate
+      if start_col <= 1 and start_line > 1 then
+        -- We are always selecting the newline as well. So undo that for our movement first.
+        start_line = start_line - 1
+      end
 
       -- If cursor was at the end of our selection then we were moving forward.
       local was_going_forward = cursor_line == end_line

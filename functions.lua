@@ -74,21 +74,25 @@ vim_functions = {
 
   ["vimxl-visual:yank"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
+    -- TOOD: Also doesn't work perfectly for line mode copy because cut_or_copy inserts spaces between selections...
     command.perform("doc:copy")
     state:set_mode("n")
   end,
   ["vimxl-visual:substitute"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
+    -- TOOD: Also doesn't work perfectly for line mode copy because cut_or_copy inserts spaces between selections...
     command.perform("doc:cut")
     state:set_mode("i")
   end,
   ["vimxl-visual:change"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
+    -- TOOD: Also doesn't work perfectly for line mode copy because cut_or_copy inserts spaces between selections...
     command.perform("doc:cut")
     state:set_mode("i")
   end,
   ["vimxl-visual:delete"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
+    -- TOOD: Also doesn't work perfectly for line mode copy because cut_or_copy inserts spaces between selections...
     command.perform("doc:cut")
     state:set_mode("n")
   end,
