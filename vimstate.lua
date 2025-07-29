@@ -287,7 +287,6 @@ end
 ---@param was_going_forward boolean
 local function vim_style_visual_line_select_impl(doc, cursor_line, cursor_col, start_line, end_line, was_going_forward)
   local is_going_forward = cursor_line >= end_line
-  local is_neutral = cursor_line == end_line and end_line == start_line
 
   if was_going_forward and not is_going_forward then
     -- We switched sides.
@@ -356,10 +355,14 @@ function VimState:move_or_select(translate_fn, numerical_argument)
       if state.mode == "v-block" and l2 ~= nil and c2 ~= nil then
         -- If we get a text object, just select that text object
         -- and enter ordinary visual mode. As is done in Vim.
-        -- TOOD: This doesn't actually seem entirely correct, some text objects like inner word don't do this, while "i(" does.
+        -- TODO: This doesn't actually seem entirely correct, some text objects like inner word don't do this, while "i(" does.
+        -- TODO: Do :help text-objects, we can see which text-objects are supposed to force linewise, or force charwise there.
         state:set_mode("v")
         if c1 == c2 then
           c1 = c1 + 1
+        end
+        if is_selection_going_forward(l2, c2, l1, c1) then
+          l1, c1, l2, c2 = l2, c2, l1, c1
         end
         state.view.doc.set_selection(l1, c1, l2, c2)
         return
@@ -381,7 +384,7 @@ function VimState:move_or_select(translate_fn, numerical_argument)
       -- We try to get the last added and something else if possible.
       local not_last_selection = state.view.doc.last_selection > 1 and 1 or (#state.view.doc.selections / 4)
       local _, _, start_line, start_col = state.view.doc:get_selection_idx(not_last_selection)
-      local cursor_line, cursor_col, end_line, end_col = state.view.doc:get_selection_idx(state.view.doc.last_selection)
+      local cursor_line, cursor_col, end_line = state.view.doc:get_selection_idx(state.view.doc.last_selection)
 
       -- In my opinion it should be end_line we are decreasing.
       -- But that doesn't work for some reason.
@@ -407,7 +410,10 @@ function VimState:move_or_select(translate_fn, numerical_argument)
         if c1 == c2 then
           c1 = c1 + 1
         end
-        state.view.doc.set_selection(l1, c1, l2, c2)
+        if is_selection_going_forward(l2, c2, l1, c1) then
+          l1, c1, l2, c2 = l2, c2, l1, c1
+        end
+        state.view.doc:set_selection(l1, c1, l2, c2)
         return
       end
 
@@ -566,6 +572,74 @@ function VimState:on_text_input(text)
   end
 end
 
+---@param control number
+local function get_operator_selections_iter(invariant, control)
+  local selection_invariant = invariant[1]
+  local selection_iterator = invariant[2]
+  local idx, l1, c1, l2, c2 = selection_iterator(selection_invariant, control)
+
+  if not idx then
+    return nil
+  end
+
+  ---@type vimxl.motion | nil
+  local motion = invariant[3]
+  local view = invariant[4]
+  local numerical_argument = invariant[5]
+
+  if motion then
+    l1, c1, l2, c2 = motion(view.doc, l1, c1, view, numerical_argument)
+  end
+
+  return idx, l1, c1, l2, c2, 1
+end
+
+---@param doc core.doc
+---@param control number
+local function merged_selection_iter(doc, control)
+  if control > 0 then return end
+
+  ---@type number
+  local start_line, start_col, end_line, end_col = #doc.lines + 1, 0, 0, 0
+
+  -- How many were combined?
+  local fused = 0
+
+  for _, l1, c1, l2, c2 in doc:get_selections() do
+    fused = fused + 1
+
+    -- TODO: If only get_selections was typed properly, then ugly casts like these wouldn't exist ;>
+    ---@cast l1 number
+
+    if start_line > l1 or start_line == l1 and start_col > c1 then
+      start_line, start_col = l1, c1
+    end
+    if start_line > l2 or start_line == l2 and start_col > c2 then
+      start_line, start_col = l2, c2
+    end
+    if l1 > end_line or l1 == end_line and c1 > end_col then
+      end_line, end_col = l1, c1
+    end
+    if l2 > end_line or l2 == end_line and c2 > end_col then
+      end_line, end_col = l2, c2
+    end
+  end
+
+  return control + 1, start_line, start_col, end_line, end_col, fused
+end
+
+---@param motion? vimxl.motion
+---@param numerical_argument? number
+function VimState:get_operator_selections(motion, numerical_argument)
+  if self.mode == "v-line" and motion == nil then
+     return merged_selection_iter, self.view.doc, 0
+  end
+
+  local selection_iter, selection_invariant, control = self.view.doc:get_selections(false, true)
+  local invariant = { selection_invariant, selection_iter, motion, self.view, numerical_argument }
+  return get_operator_selections_iter, invariant, control
+end
+
 ---Call this if you want the entire command history
 ---to be repeatable with an arbitrary amount.
 ---Default is taken from the numerical_argument of the view.
@@ -715,7 +789,7 @@ function VimState:set_mode(mode)
 
   -- We don't want the user to think that we are slow.
   core.blink_reset()
-  
+
   self:set_correct_keymap()
   if prev_mode == "n" and (mode == "i" or mode == "v" or mode == "v-block" or mode == "v-line") then
     -- During i and v we will track history. So make sure history is clean.
@@ -776,25 +850,6 @@ function VimState:set_mode(mode)
       self:repeat_commands(true)
     end
   end
-end
-
----@param motion vimxl.motion
----@param numerical_argument? number
----@return string
-function VimState:yank_using_motion(motion, numerical_argument)
-  local full_text = ""
-  local text = ""
-  for _, line, col in self.view.doc:get_selections(true) do
-    text = self.view.doc:get_text(motion(self.view.doc, line, col, self.view, numerical_argument))
-    full_text = full_text == "" and text or (text .. " " .. full_text)
-    if line == #self.view.doc.lines then
-      -- We are on the last line, add a newline to emulate Vim behaviour when
-      -- typing yy better.
-      full_text = full_text .. "\n"
-    end
-  end
-  system.set_clipboard(full_text)
-  return full_text
 end
 
 function VimState:escape_mode()

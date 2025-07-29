@@ -58,6 +58,7 @@ command.add(vim_non_i_mode_predicate, {
     command.perform("doc:redo")
   end,
   ["vimxl:newline"] = function ()
+    -- TODO: Newline in Vim has some special behaviour where it automatically clears empty lines behind it.
     core.active_view.vim_state:on_text_input("\n")
   end,
   ["vimxl:enter-block-mode"] = function ()

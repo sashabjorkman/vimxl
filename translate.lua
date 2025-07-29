@@ -97,7 +97,6 @@ function vim_translate.next_word_start(doc, line, col, _, numerical_argument)
     line, col = translate_next_word_start_impl(doc, line, col, false)
   end
   return line, col
-
 end
 
 ---@type vimxl.motion
@@ -290,9 +289,10 @@ function vim_translate.prev_word_start_by_whitespace(doc, line, col, _, numerica
 end
 
 ---@type vimxl.motion
-function vim_translate.end_of_line(_, line, _, _, extra)
+function vim_translate.end_of_line(doc, line, _, _, extra)
   if extra == nil then extra = 1 end
-  return line + extra - 1, math.huge
+  local final_line = line + extra - 1
+  return final_line, #doc.lines[final_line] - 1
 end
 
 ---@type vimxl.motion

@@ -23,6 +23,7 @@ Here is a non-exhaustive list of features currently implemented:
 * The repeat command (`.`)
 * Insert mode, visual mode, normal mode, command mode
 * Limited visual blockwise mode
+* Visual linewise mode
 * Search support
 * Yank, delete, change, substitute
 * Indent, unindent
@@ -35,7 +36,7 @@ Here is a non-exhaustive list of features currently implemented:
 * A lot of comments.
 * ... and more!
 
-## Philosophy
+## 🧾 Philosophy
 The aim of VimXL is to be as non-intrusive as possible.
 And generally to be a good citizen in the Lite XL world.
 For example,
@@ -61,7 +62,7 @@ Try running `2d2w3.` in VimXL and compare the result to other plugins.
 The correct behaviour (that can be seen by doing the same in Vim) is that
 a total of 7 words should be deleted.
 
-## ⚠️ Bugs and Inconsistencies
+## 🚧 Bugs and Inconsistencies
 If you find a bug or any implementation
 inconsistencies between VimXL and stock Vim,
 please feel free to create an issue or contact

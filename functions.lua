@@ -2,111 +2,9 @@ local core = require "core"
 local command = require "core.command"
 
 local constants = require "plugins.vimxl.constants"
+local operators = require "plugins.vimxl.operators"
 local vim_available_commands = require "plugins.vimxl.available-commands"
 local vim_translate = require "plugins.vimxl.translate"
-
----This is how Vim behaves. Don't question it.
----@param a number | nil
----@param b number | nil
-local function product_with_strange_default(a, b)
-  if a == nil and b == nil then return nil end
-  return (a or 1) * (b or 1)
-end
-
----This function only exists so that indent and unindent in
----normal mode may share their implementations.
----@param start_state vimxl.vimstate
----@param numerical_argument_operator? number
----@param unindent boolean
-local function generic_normal_indent(start_state, numerical_argument_operator, unindent)
-  start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
-    local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
-    second_state:begin_naive_repeatable_command(function (state)
-      for _, line, col in state.view.doc:get_selections(true) do
-        local l1, c1, l2, c2 = motion(state.view.doc, line, col, state.view, product_numerical_argument)
-        l2 = l2 - 1
-        state.view.doc:indent_text(unindent, l1, c1, l2, c2)
-      end
-    end)
-  end)
-end
-
-local function unselect_newline(l1, c1, l2, c2)
-  if l1 > 1 and c1 <= 1 then
-    l1 = l1 - 1
-  end
-  if l2 > 1 and c2 <= 1 then
-    l2 = l2 - 1
-  end
-  return l1, l2
-end
-
----This function only exists so that indent and unindent in
----visual mode may share their implementations.
----@param start_state vimxl.vimstate
----@param numerical_argument? number
----@param unindent boolean
-local function generic_visual_indent(start_state, numerical_argument, unindent)
-  -- TODO: Perhaps handle block-mode here as well?
-
-  local lines = {}
-  local first_line1, first_line2 = unselect_newline(start_state.view.doc:get_selection())
-  local first_line = math.min(first_line1, first_line2)
-
-  for _, l1, c1, l2, c2 in start_state.view.doc:get_selections() do
-    l1, l2 = unselect_newline(l1, c1, l2, c2)
-    
-    for line = math.min(l1, l2), math.max(l1, l2) do
-      --table.insert(lines, line - first_line)
-      lines[line - first_line] = true
-    end
-  end
-  start_state:begin_naive_repeatable_command(function (state)
-    local start_line1, start_line2 = unselect_newline(start_state.view.doc:get_selection())
-    local start_line = math.min(start_line1, start_line2)
-    for line in ipairs(lines) do
-      state.view.doc:indent_text(unindent, start_line + line, 0, start_line + line, 1)
-    end
-    -- Mimic Vim behaviour.
-    if #lines > 0 then
-      state.view.doc:move_to(vim_translate.first_printable, state.view)
-    end
-  end, numerical_argument)
-  start_state:set_mode("n")
-end
-
----@param state vimxl.vimstate
----@param delete boolean
-local function visual_mode_copy(state, delete)
-  -- TODO: For block mode, we can use core.cursor_clipboard_whole_line to paste in the correct manner.
-
-  local separator = ""
-
-  if state.mode == "v-block" then
-    separator = "\n"
-  end
-
-  ---@type core.doc
-  local doc = state.view.doc
-  
-  local full_text = ""
-  local text = ""
-  core.cursor_clipboard = {}
-  core.cursor_clipboard_whole_line = {}
-  for idx, line1, col1, line2, col2 in doc:get_selections(true, true) do
-    if line1 ~= line2 or col1 ~= col2 then
-      text = doc:get_text(line1, col1, line2, col2)
-      full_text = full_text == "" and text or (text .. separator .. full_text)
-      core.cursor_clipboard_whole_line[idx] = separator == "\n"
-      if delete then
-        doc:delete_to_cursor(idx, 0)
-      end
-    end
-    core.cursor_clipboard[idx] = text
-  end
-  core.cursor_clipboard["full"] = full_text
-  system.set_clipboard(full_text)
-end
 
 ---A function that can be invoked through Vim keybinds.
 ---It can also be invoked through the command mode if put inside the 
@@ -117,34 +15,40 @@ end
 ---@type { [string]: vimxl.vim_command }
 local vim_functions = {}
 
+-- An alias is defined because we use it so often.
+local product_with_strange_default = operators.product_with_strange_default
+
 vim_functions = {
   -- Visual mode specifics
 
+  ["vimxl-visual:normal-mode"] = function (state)
+    state:escape_mode()
+  end,
   ["vimxl-visual:yank"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    visual_mode_copy(state, false)
+    operators.generic_cut_or_copy(state, operators.DELETE_STYLE_DISABLED)
     state:set_mode("n")
   end,
   ["vimxl-visual:substitute"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    visual_mode_copy(state, true)
+    operators.generic_cut_or_copy(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL)
     state:set_mode("i")
   end,
   ["vimxl-visual:change"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    visual_mode_copy(state, true)
+    operators.generic_cut_or_copy(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL)
     state:set_mode("i")
   end,
   ["vimxl-visual:delete"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    visual_mode_copy(state, true)
+    operators.generic_cut_or_copy(state, operators.DELETE_STYLE_ALL)
     state:set_mode("n")
   end,
   ["vimxl-visual:indent"] = function (start_state, numerical_argument)
-    generic_visual_indent(start_state, numerical_argument, false)
+    operators.generic_visual_indent(start_state, numerical_argument, false)
   end,
   ["vimxl-visual:unindent"] = function (start_state, numerical_argument)
-    generic_visual_indent(start_state, numerical_argument, true)
+    operators.generic_visual_indent(start_state, numerical_argument, true)
   end,
 
   -- Visual block mode specifics
@@ -197,18 +101,9 @@ vim_functions = {
     start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
-        local full_text = state:yank_using_motion(motion, numerical_argument)
-        for _, line, col in state.view.doc:get_selections(true) do
-          local l1, c1, l2, c2 = motion(state.view.doc, line, col, state.view, numerical_argument)
-          if l2 >= #state.view.doc.lines then
-            -- Handle the deletion of the last lines by removing an extra newline.
-            l1 = l1 - 1
-            c1 = #state.view.doc.lines[l1]
-          end
-          state.view.doc:remove(l1, c1, l2, c2)
-        end
+        local full_text = operators.generic_cut_or_copy(state, operators.DELETE_STYLE_ALL, motion, numerical_argument)
         if full_text:match("\n$") then
-          -- We only want this for linewise motions.
+          -- We only want this for linewise motions which is why we detect \n.
           state:move_or_select(vim_translate.first_printable)
         end
       end, product_numerical_argument)
@@ -219,23 +114,14 @@ vim_functions = {
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:set_mode("i")
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
-        for _, line, col in state.view.doc:get_selections(true) do
-          local l1, c1, l2, c2 = motion(state.view.doc, line, col, state.view, numerical_argument)
-          if l1 ~= l2 and c2 == 0 then
-            -- This was a linewise remove. But we don't want to
-            -- remove the last newline.
-            l2 = l2 - 1
-            c2 = math.huge
-          end
-          state.view.doc:remove(l1, c1, l2, c2)
-        end
+        operators.generic_cut_or_copy(state, operators.DELETE_STYLE_KEEP_LINE, motion, numerical_argument)
       end, product_numerical_argument)
     end)
   end,
   ["vimxl-normal:yank"] = function (state, numerical_argument_operator)
     state:expect_motion(function (second_state, motion, numerical_argument_motion)
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
-      second_state:yank_using_motion(motion, product_numerical_argument)
+      operators.generic_cut_or_copy(second_state, operators.DELETE_STYLE_DISABLED, motion, product_numerical_argument)
     end)
   end,
   ["vimxl-normal:paste-before"] = function (start_state, numerical_argument)
@@ -273,10 +159,10 @@ vim_functions = {
     end, numerical_argument)
   end,
   ["vimxl-normal:indent"] = function (start_state, numerical_argument_operator)
-    generic_normal_indent(start_state, numerical_argument_operator, false)
+    operators.generic_normal_indent(start_state, numerical_argument_operator, false)
   end,
   ["vimxl-normal:unindent"] = function (start_state, numerical_argument_operator)
-    generic_normal_indent(start_state, numerical_argument_operator, true)
+    operators.generic_normal_indent(start_state, numerical_argument_operator, true)
   end,
   ["vimxl-normal:repeat"] = function (state, numerical_argument)
     if numerical_argument ~= nil then

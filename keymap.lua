@@ -72,6 +72,7 @@ local normal_and_visual_mode = {
 
 ---@type vimxl.keybind_map
 local visual_mode = {
+  ["v"] = "vimxl-visual:normal-mode",
   ["y"] = "vimxl-visual:yank",
   ["s"] = "vimxl-visual:substitute",
   ["c"] = "vimxl-visual:change",
@@ -85,6 +86,7 @@ local visual_mode = {
 
 ---@type vimxl.keybind_map
 local visual_block_mode = {
+  [constants.CTRL_V] = "vimxl-visual:normal-mode",
   ["y"] = "vimxl-visual:yank",
   ["s"] = "vimxl-visual:substitute",
   ["c"] = "vimxl-visual:change",
@@ -100,11 +102,12 @@ local visual_block_mode = {
 
 ---@type vimxl.keybind_map
 local visual_line_mode = {
+  ["V"] = "vimxl-visual:normal-mode",
   ["y"] = "vimxl-visual:yank",
   ["s"] = "vimxl-visual:substitute",
   ["c"] = "vimxl-visual:change",
   ["d"] = "vimxl-visual:delete",
-  -- TODO: It should just enter I mode in the normal way apparently...
+  -- TODO: If we have moved up then I should enter at the cursor, if we have moved down then it should enter I mode at the start of the selection, very strange.
   --["I"] = "",
   [">"] = "vimxl-visual:indent",
   ["<"] = "vimxl-visual:unindent",
