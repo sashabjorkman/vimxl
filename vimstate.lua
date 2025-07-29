@@ -278,37 +278,61 @@ function VimState:create_block_selection(l1, c1, l2, c2)
   self.view.doc.last_selection = (count - 1) / 4
 end
 
+---The line selection has the cursor at the start of the selection.
+---@see vim_style_visual_line_select_impl
+local DIRECTION_BACKWARD = -1
+
+---The line selection only contains one line.
+---@see vim_style_visual_line_select_impl
+local DIRECTION_NEUTRAL = 0
+
+---The line selection has the cursor at the end of the selection.
+---@see vim_style_visual_line_select_impl
+local DIRECTION_FORWARD = 1
+
 ---Implements linewise visual select for us.
 ---@param doc core.doc
 ---@param cursor_line number
 ---@param cursor_col number
 ---@param start_line number
 ---@param end_line number
----@param was_going_forward boolean
-local function vim_style_visual_line_select_impl(doc, cursor_line, cursor_col, start_line, end_line, was_going_forward)
-  local is_going_forward = cursor_line >= end_line
-
-  if was_going_forward and not is_going_forward then
-    -- We switched sides.
-    end_line = start_line
-    start_line = cursor_line
-  elseif not was_going_forward and is_going_forward then
-    -- We also switched sides here.
-    start_line = end_line
-    end_line = cursor_line
-  elseif is_going_forward then
-    end_line = cursor_line
-  else
-    start_line = cursor_line
+---@param old_direction number
+local function vim_style_visual_line_select_impl(doc, cursor_line, cursor_col, start_line, end_line, old_direction)
+  if old_direction == DIRECTION_NEUTRAL then
+    -- We just expand in any direction that fits us.
+    if cursor_line > start_line then
+      end_line = cursor_line + 1
+    end
+    if cursor_line < start_line then
+      start_line = cursor_line
+    end
+  elseif old_direction == DIRECTION_FORWARD then
+    if cursor_line < start_line then
+      -- Direction flipped.
+      end_line = start_line + 1
+      start_line = cursor_line
+    else
+      -- Shrinking or expanding!
+      end_line = cursor_line + 1
+    end
+  elseif old_direction == DIRECTION_BACKWARD then
+    if cursor_line >= end_line then
+      -- Direction flipped.
+      start_line = end_line - 1
+      end_line = cursor_line + 1
+    else
+      -- Shrinking or expanding!
+      start_line = cursor_line
+    end
   end
 
   if start_line > end_line then
-    start_line, end_line = end_line, start_line
+    core.error("OH NO!")
   end
 
   doc.selections = {}
-  doc:add_selection(cursor_line, cursor_col, end_line + 1, 0)
   doc:add_selection(cursor_line, cursor_col, start_line, 0)
+  doc:add_selection(cursor_line, cursor_col, end_line, 0)
 end
 
 ---Make a movement/selection within the current document, but also
@@ -381,24 +405,23 @@ function VimState:move_or_select(translate_fn, numerical_argument)
   elseif self.mode == "v-line" then
     ---@param state vimxl.vimstate
     local function vim_style_visual_block_select_to(state)
-      -- We try to get the last added and something else if possible.
-      local not_last_selection = state.view.doc.last_selection > 1 and 1 or (#state.view.doc.selections / 4)
-      local _, _, start_line, start_col = state.view.doc:get_selection_idx(not_last_selection)
-      local cursor_line, cursor_col, end_line = state.view.doc:get_selection_idx(state.view.doc.last_selection)
+      local cursor_line, cursor_col, start_line = state.view.doc:get_selection_idx(1)
+      local end_line = start_line + 1
 
-      -- In my opinion it should be end_line we are decreasing.
-      -- But that doesn't work for some reason.
-      -- Logging revelas that start_line and end_line have their names swapped.
-      -- But was_going_forward appears to be working correctly so
-      -- I really don't know what is happening. Perhaps was_going_forward is wrongly named as well?
-      -- TODO: Investigate
-      if start_col <= 1 and start_line > 1 then
-        -- We are always selecting the newline as well. So undo that for our movement first.
-        start_line = start_line - 1
+      -- These are not set the first time we enter v-line mode. So therefor we don't
+      -- set end_line in that case.
+      local new_cursor_line, new_cursor_col, new_end_line = state.view.doc:get_selection_idx(2)
+      if new_cursor_line then
+        cursor_line, cursor_col, end_line = new_cursor_line, new_cursor_col, new_end_line
       end
 
-      -- If cursor was at the end of our selection then we were moving forward.
-      local was_going_forward = cursor_line == end_line
+      local old_direction = DIRECTION_FORWARD
+      if cursor_line == start_line
+      and (cursor_line + 1 == end_line or cursor_line == end_line) then
+        old_direction = DIRECTION_NEUTRAL
+      elseif cursor_line <= start_line then
+        old_direction = DIRECTION_BACKWARD
+      end
 
       local l1, c1, l2, c2 = translate_fn(state.view.doc, cursor_line, cursor_col, state.view, numerical_argument)
 
@@ -417,7 +440,7 @@ function VimState:move_or_select(translate_fn, numerical_argument)
         return
       end
 
-      vim_style_visual_line_select_impl(state.view.doc, l1, c1, start_line, end_line, was_going_forward)
+      vim_style_visual_line_select_impl(state.view.doc, l1, c1, start_line, end_line, old_direction)
     end
 
     vim_style_visual_block_select_to(self)
