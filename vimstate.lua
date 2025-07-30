@@ -249,46 +249,82 @@ local function vim_style_visual_block_select_to_impl(l1, c1, l2, c2, was_going_f
   return l1, c1, l2, c2
 end
 
----@param l1 number
----@param c1 number
----@param l2 number
----@param c2 number
-function VimState:create_block_selection(l1, c1, l2, c2)
+---@param l1 number Line of the cursor corner.
+---@param c1 number Column of the cursor corner.
+---@param l2 number Line of the starting-point corner.
+---@param c2 number Column of the starting-point corner.
+---@param existing_selections number How many existing selections are there? We clear them all.
+function VimState:create_block_selection(l1, c1, l2, c2, existing_selections)
+  -- We use l2 which is the last line. If there is only one line,
+  -- then l1 is also l2. So everything is fine.
+  self.view.doc:set_selections(1, l2, c1, l2, c2, false, existing_selections * 4)
 
-  local new_selection = {}
-
-  local increment = l1 > l2 and 1 or -1
-
-  local count = 1
-  -- Not the most elegant way of doing this. But sadly add_selection
-  -- keeps the selections "sorted"... Which in most cases is probably a good thing,
-  -- but in our case we use it to know which is the head and tail.
-  -- TODO: This probably should be redone such that we track that elsewhere.
-  for line = l2, l1, increment do
-    new_selection[count] = line
-    count = count + 1
-    new_selection[count] = c1
-    count = count + 1
-    new_selection[count] = line
-    count = count + 1
-    new_selection[count] = c2
-    count = count + 1
+  if l2 == l1 then
+    -- Only one line so stop here.
+    -- last_selection isn't set by set_selection,
+    -- but we're okayy with that because after our
+    -- call to set_selection there should only be one selection.
+    -- And as such get_selection() will return it.
+    return
   end
-  self.view.doc.selections = new_selection
-  self.view.doc.last_selection = (count - 1) / 4
+
+  -- There are more lines.
+  -- We want to make sure that the l1 is the last line that is added so that
+  -- get_selection() will return it.
+  local increment = l1 > l2 and 1 or -1
+  for line = l2 + increment, l1, increment do
+      self.view.doc:add_selection(line, c1, line, c2)
+  end
 end
 
 ---The line selection has the cursor at the start of the selection.
+---Also used during corner detection for block-select.
 ---@see vim_style_visual_line_select_impl
+---@see find_corners_from_selection
 local DIRECTION_BACKWARD = -1
 
 ---The line selection only contains one line.
+---Also used during corner detection for block-select.
 ---@see vim_style_visual_line_select_impl
+---@see find_corners_from_selection
 local DIRECTION_NEUTRAL = 0
 
 ---The line selection has the cursor at the end of the selection.
+---Also used during corner detection for block-select.
 ---@see vim_style_visual_line_select_impl
+---@see find_corners_from_selection
 local DIRECTION_FORWARD = 1
+
+---@param doc core.doc
+local function find_corners_from_selection(doc)
+  local start_line, start_col, end_line, end_col = doc:get_selection()
+
+  local direction = DIRECTION_NEUTRAL
+
+  local fused = 0
+  for _, other_line, _, l2, c2 in doc:get_selections() do
+    fused = fused + 1
+    if direction == DIRECTION_NEUTRAL and start_line ~= other_line then
+      if other_line > start_line then
+        direction = DIRECTION_BACKWARD
+        end_line, end_col = l2, c2
+      elseif other_line < start_line then
+        direction = DIRECTION_FORWARD
+        end_line, end_col = l2, c2
+      end
+    elseif direction == DIRECTION_FORWARD then
+      if other_line < end_line then
+        end_line, end_col = l2, c2
+      end
+    elseif direction == DIRECTION_BACKWARD then
+      if other_line > end_line then
+        end_line, end_col = l2, c2
+      end
+    end
+  end
+
+  return start_line, start_col, end_line, end_col, fused
+end
 
 ---Implements linewise visual select for us.
 ---@param doc core.doc
@@ -358,8 +394,10 @@ function VimState:move_or_select(translate_fn, numerical_argument)
   elseif self.mode == "v-block" then
     ---@param state vimxl.vimstate
     local function vim_style_visual_block_select_to(state)
-      local start_line, start_col = state.view.doc:get_selection()
-      local _, _, end_line, end_col = state.view.doc:get_selection_idx(1)
+      --local start_line, start_col = state.view.doc:get_selection()
+      --local _, _, end_line, end_col = state.view.doc:get_selection_idx(1)
+
+      local start_line, start_col, end_line, end_col, fused = find_corners_from_selection(state.view.doc)
 
       -- Detect if a character is not currently selected and if so correct that.
       if start_col == end_col then
@@ -393,7 +431,7 @@ function VimState:move_or_select(translate_fn, numerical_argument)
       end
 
       l1, c1, l2, c2 = vim_style_visual_block_select_to_impl(l1, c1, end_line, end_col, was_going_forward)
-      state:create_block_selection(l1, c1, l2, c2)
+      state:create_block_selection(l1, c1, l2, c2, fused)
     end
 
     vim_style_visual_block_select_to(self)
@@ -595,6 +633,9 @@ function VimState:on_text_input(text)
   end
 end
 
+---An iterator of document selections that will apply a motion before
+---returning a result.
+---@see get_operator_selections
 ---@param control number
 local function get_operator_selections_iter(invariant, control)
   local selection_invariant = invariant[1]
@@ -617,6 +658,11 @@ local function get_operator_selections_iter(invariant, control)
   return idx, l1, c1, l2, c2, 1
 end
 
+---In v-line mode we'd rather return the selection
+---as one continuous selection for our operators to use.
+---So we merge/fuse all selections into one that contains all
+---of the selections.
+---@see get_operator_selections
 ---@param doc core.doc
 ---@param control number
 local function merged_selection_iter(doc, control)
@@ -651,6 +697,10 @@ local function merged_selection_iter(doc, control)
   return control + 1, start_line, start_col, end_line, end_col, fused
 end
 
+---Call this to get some selections that represent the area of the text
+---that the operator should make changes to.
+---It should support all known visual-select modes.
+---And will apply the motion automatically for you.
 ---@param motion? vimxl.motion
 ---@param numerical_argument? number
 function VimState:get_operator_selections(motion, numerical_argument)
@@ -777,8 +827,13 @@ function VimState:repeat_commands(minus_one)
   end
 end
 
+---In i-mode there are no keybinds that are handled by this plugin.
+---Therfor let this be empty!
+---Only really exists for symmetry and correctness. But we could do without it.
+---@see set_correct_keymap
 local empty_keymap_for_i_mode = {}
 
+---Based on the current mode, pick an appropriate keymap.
 function VimState:set_correct_keymap()
   -- Clear it, otherwise we have to set keymap to
   -- a map containing motions. We don't want that as
@@ -800,9 +855,23 @@ function VimState:set_correct_keymap()
   end
 end
 
+---When entering different visual selects, they might want to
+---setup a specific form LiteXL selections (i.e charwise).
+---We can make sure at least a character is selected by navigating to it.
 ---@type vimxl.motion
 local function translate_noop(_, line, col)
   return line, col
+end
+
+---Makes sure nothing is selected. Useful for leaving visual modes mainly.
+---@param state vimxl.vimstate
+---@param is_charwise boolean When true, the operation will collapse as if the cursor is on a char, not between.
+local function collapse_selection(state, is_charwise)
+  local l1, c1, l2, c2 = state.view.doc:get_selection()
+  if is_charwise and is_selection_going_forward(l1, c1, l2, c2) then
+    c1 = c1 - 1
+  end
+  state.view.doc:set_selection(l1, c1)
 end
 
 ---@param mode vimxl.mode
@@ -815,6 +884,8 @@ function VimState:set_mode(mode)
 
   self:set_correct_keymap()
   if prev_mode == "n" and (mode == "i" or mode == "v" or mode == "v-block" or mode == "v-line") then
+    collapse_selection(self, false)
+
     -- During i and v we will track history. So make sure history is clean.
     self.command_history = {}
 
@@ -823,15 +894,7 @@ function VimState:set_mode(mode)
       self:move_or_select(translate_noop, 0)
     end
   elseif mode == "n" then
-    -- Send us back to where we started. Note that this is unlike doc:select-none 
-    -- because doc:select-none sets the cursor to the end of the selection.
-    if prev_mode == "v" or prev_mode == "v-block" then
-      local l1, c1 = self.view.doc:get_selection()
-      self.view.doc:set_selection(l1, c1 - 1)
-    else
-      local _, _, l2, c2 = self.view.doc:get_selection_idx(1)
-      self.view.doc:set_selection(l2, c2)
-    end
+    collapse_selection(self, prev_mode == "v" or prev_mode == "v-block")
 
     -- We have to scan to see if there is a
     -- repeat_everything command in there and see if its
@@ -876,14 +939,6 @@ function VimState:set_mode(mode)
 end
 
 function VimState:escape_mode()
-  -- Copied from doc:select-none
-  -- We want to deselect everything when escape is pressed more or less.
-  -- We want to the last selection if possible.
-  local l1, c1 = self.view.doc:get_selection_idx(self.view.doc.last_selection)
-  if not l1 then
-    l1, c1 = self.view.doc:get_selection_idx(1)
-  end
-  self.view.doc:set_selection(l1, c1)
   self:set_mode("n")
 end
 
@@ -958,14 +1013,18 @@ end
 -- if a selection is made in normal mode.
 function VimState:on_mouse_moved()
   if self.view.mouse_selecting and self.mode == "n" then
+    -- Technically we could support v-line and v-block mode as well.
+    -- But Vim doesn't, so we shouldn't.
     self:set_mode("v")
   end
 end
 
 ---@param button core.view.mousebutton
 function VimState:on_mouse_pressed(button)
-  -- TODO: Handle visual block select as well.
-  if self.mode == "v" and button == "left" then
+  local is_selecting = self.mode == "v"
+                    or self.mode == "v-line"
+                    or self.mode == "v-block"
+  if is_selecting and button == "left" then
     self:escape_mode()
   end
 end
