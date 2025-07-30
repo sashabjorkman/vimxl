@@ -5,7 +5,7 @@ local vim_available_commands = {
   ["s"] = "root:split-down",
   ["qall"] = "core:quit",
   ["qall!"] = "core:force-quit",
-  ["q"] = "root:close-or-quit",
+  ["q"] = "vimxl:close-or-quit",
   ["q!"] = "vimxl:force-close-or-quit",
 }
 
