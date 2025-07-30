@@ -7,8 +7,8 @@
 
 A faithful Vim plugin for [Lite XL](https://lite-xl.com/), that doesn't suck!
 
-## 🚀 Installation
-Just do 
+## Installation
+🚀 Just do 
 
 ```sh
 git clone https://github.com/sashabjorkman/vimxl
@@ -18,8 +18,8 @@ inside of your `plugins/` directory.
 Which is usually `~/.config/lite-xl/plugins`
 
 
-## ✨ Features
-Here is a non-exhaustive list of features currently implemented:
+## Features
+✨ Here is a non-exhaustive list of features currently implemented:
 * The repeat command (`.`)
 * Insert mode, visual mode, normal mode, command mode
 * Limited visual blockwise mode
@@ -36,8 +36,8 @@ Here is a non-exhaustive list of features currently implemented:
 * A lot of comments.
 * ... and more!
 
-## 🧾 Philosophy
-The aim of VimXL is to be as non-intrusive as possible.
+## Philosophy
+🧾 The aim of VimXL is to be as non-intrusive as possible.
 And generally to be a good citizen in the Lite XL world.
 For example,
 the insert mode of VimXL is almost
@@ -62,8 +62,8 @@ Try running `2d2w3.` in VimXL and compare the result to other plugins.
 The correct behaviour (that can be seen by doing the same in Vim) is that
 a total of 7 words should be deleted.
 
-## 🚧 Bugs and Inconsistencies
-If you find a bug or any implementation
+## Bugs and Inconsistencies
+🚧 If you find a bug or any implementation
 inconsistencies between VimXL and stock Vim,
 please feel free to create an issue or contact
 me through the official Lite XL community.
