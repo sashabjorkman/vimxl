@@ -230,8 +230,10 @@ vim_functions = {
     suggest = function (text)
       local res = {}
       local i = 0
+      local wants_forced = text:match("!$") ~= nil
       for k, v in pairs(vim_available_commands) do
-        if k:sub(1, #text) == text then
+        local is_forcing = k:match("!$") ~= nil
+        if k:sub(1, #text) == text and wants_forced == is_forcing then
           i = i + 1
           res[i] = {
             text = k,

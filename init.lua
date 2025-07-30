@@ -63,7 +63,36 @@ command.add(vim_non_i_mode_predicate, {
   end,
   ["vimxl:enter-block-mode"] = function ()
     core.active_view.vim_state:on_text_input(constants.CTRL_V)
-  end
+  end,
+  ["vimxl:close-or-quit"] = function ()
+    local node = core.root_view:get_active_node()
+    if node and (not node:is_empty() or not node.is_primary_node) then
+      local do_close = function()
+        node:remove_view(core.root_view.root_node, node.active_view)
+
+        -- If this was the last one, then close all of LiteXL.
+        if node:is_empty() then
+          core.quit()
+        end
+      end
+      node.active_view:try_close(do_close)
+    else
+      core.quit()
+    end
+  end,
+  ["vimxl:force-close-or-quit"] = function()
+    local node = core.root_view:get_active_node()
+    if node and (not node:is_empty() or not node.is_primary_node) then
+      node:remove_view(core.root_view.root_node, node.active_view)
+
+      -- If this was the last one, then close all of LiteXL.
+      if node:is_empty() then
+        core.quit(true)
+      end
+    else
+      core.quit(true)
+    end
+  end,
 })
 
 command.add(DocView, {
