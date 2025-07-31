@@ -501,6 +501,26 @@ function VimState:move_or_select(translate_fn, numerical_argument)
   end
 end
 
+function VimState:get_mode_name()
+  if self.mode == "v" then
+    return "visual"
+  end
+  if self.mode == "v-line" then
+    return "visual line"
+  end
+  if self.mode == "v-block" then
+    return "visual block"
+  end
+  if self.mode == "i" then
+    return "insert"
+  end
+  if self.mode == "n" then
+    return "normal"
+  end
+
+  return self.mode
+end
+
 ---Should return double nil if not in any visual mode.
 ---Otherwise it should return the starting location of the select mode.
 function VimState:get_visual_start()

@@ -1,8 +1,10 @@
 -- mod-version:3
 
 local core = require "core"
+local style = require "core.style"
 local command = require "core.command"
 local DocView = require "core.docview"
+local StatusView = require "core.statusview"
 
 local apply_docview_patches = require "plugins.vimxl.docview-patcher"
 local apply_tracking_patches = require "plugins.vimxl.chronicle"
@@ -98,12 +100,38 @@ command.add(vim_non_i_mode_predicate, {
 command.add(DocView, {
   ["vimxl:toggle-vi-mode"] = function ()
     local view = core.active_view
+    view.vim_was_here = true
     if view.vim_state == nil then
       view.vim_state = VimState(view)
     else
       view.vim_state = nil
     end
   end
+})
+
+local function vim_enabled_view_predicate()
+  if core.active_view and core.active_view.vim_was_here then
+    return true
+  end
+  return vim_mode_predicate()
+end
+
+core.status_view:add_item({
+  predicate = vim_enabled_view_predicate,
+  name = "vimxl:mode",
+  alignment = StatusView.Item.LEFT,
+  get_item = function()
+    local dv = core.active_view
+    local text = "litexl mode"
+    if dv and dv.vim_state then
+      text = dv.vim_state:get_mode_name()
+    end
+    return {
+      style.text, text
+    }
+  end,
+  command = "vimxl:toggle-vi-mode",
+  tooltip = "click to toggle vimxl"
 })
 
 apply_tracking_patches()
