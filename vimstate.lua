@@ -526,12 +526,14 @@ end
 function VimState:get_visual_start()
   local line, col = nil, nil
 
+  local line_direction = 0
+  local start_line = 0
+
   if self.mode == "v" then
     local l1, c1, l2, c2 = self.view.doc:get_selection()
     line = l2 or l1
     col = c2 or c1
   elseif self.mode == "v-line" then
-    local start_line
     line, col, start_line = self.view.doc:get_selection_idx(1)
     local new_cursor_line, new_cursor_col, end_line = self.view.doc:get_selection_idx(2)
     if new_cursor_line and new_cursor_col then
@@ -539,7 +541,9 @@ function VimState:get_visual_start()
       col = new_cursor_col
     end
     if line > start_line or end_line == start_line + 1 then
-      col = 0
+      line_direction = 1
+    else
+      line_direction = -1
     end
   elseif self.mode == "v-block" then
     local l1, c1, l2, c2 = find_corners_from_selection(self.view.doc)
@@ -547,7 +551,7 @@ function VimState:get_visual_start()
     line = math.min(l1, l2)
   end
 
-  return line, col
+  return line, col, line_direction, start_line
 end
 
 function VimState:on_text_input(text)

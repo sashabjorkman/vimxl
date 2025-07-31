@@ -102,7 +102,8 @@ operators.DELETE_STYLE_KEEP_LINE = 2
 ---@param c1 number
 ---@param l2? number | unknown
 ---@param c2? number | unknown
-local function adjust_cursor_during_deletion(move_to_line, move_to_col, l1, c1, l2, c2)
+---@param is_linewise boolean
+local function adjust_cursor_during_deletion(move_to_line, move_to_col, l1, c1, l2, c2, is_linewise)
   if move_to_line == nil then
     return move_to_line, move_to_col
   end
@@ -120,7 +121,9 @@ local function adjust_cursor_during_deletion(move_to_line, move_to_col, l1, c1, 
       new_line = new_line - line_removal
     else
       new_line = l1
-      new_col = (move_to_line == l2 and move_to_col > 2) and new_col - col_removal or c1
+      if not is_linewise then
+        new_col = (move_to_line == l2 and move_to_col > 2) and new_col - col_removal or c1
+      end
     end
   end
 
@@ -152,7 +155,8 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
   -- How many selections that should be deleted.
   local total_fused = 0
 
-  local move_to_line, move_to_col = state:get_visual_start()
+  local move_to_line, move_to_col, line_direction, line_start = state:get_visual_start()
+  --core.error("start %d %d", move_to_line, move_to_col)
 
   for idx, line1, col1, line2, col2, fused in state:get_operator_selections(motion, numerical_argument) do
     total_fused = total_fused + fused
@@ -183,14 +187,18 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
 
       if delete_style ~= operators.DELETE_STYLE_DISABLED then
         doc:remove(line1, col1, line2, col2)
+        move_to_line, move_to_col = adjust_cursor_during_deletion(move_to_line, move_to_col, line1, col1, line2, col2, line_direction ~= 0)
       end
-
-      move_to_line, move_to_col = adjust_cursor_during_deletion(move_to_line, move_to_col, line1, col1, line2, col2)
     end
     core.cursor_clipboard[idx] = text
   end
   core.cursor_clipboard["full"] = full_text
   system.set_clipboard(full_text)
+
+  if line_direction > 0 and delete_style == operators.DELETE_STYLE_DISABLED then
+    move_to_col = 0
+    move_to_line = line_start
+  end
 
   if move_to_line and move_to_col then
     -- TODO: Not sure if rm of set_selection is API stable.
