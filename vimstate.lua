@@ -363,11 +363,12 @@ local function vim_style_visual_line_select_impl(doc, cursor_line, cursor_col, s
   end
 
   if start_line > end_line then
-    core.error("OH NO!")
+    core.error("Visual-line mode has gone insane!")
   end
 
-  doc.selections = {}
-  doc:add_selection(cursor_line, cursor_col, start_line, 0)
+  -- Remove everything and add two new selections.
+  -- TOOD: If there is a more API stable way of getting selection count then I want to know it.
+  doc:set_selections(1, cursor_line, cursor_col, start_line, 0, false, #doc.selections)
   doc:add_selection(cursor_line, cursor_col, end_line, 0)
 end
 
@@ -498,6 +499,35 @@ function VimState:move_or_select(translate_fn, numerical_argument)
   else
     self.view.doc:move_to(translate_fn, self.view, numerical_argument)
   end
+end
+
+---Should return double nil if not in any visual mode.
+---Otherwise it should return the starting location of the select mode.
+function VimState:get_visual_start()
+  local line, col = nil, nil
+
+  if self.mode == "v" then
+    local l1, c1, l2, c2 = self.view.doc:get_selection()
+    line = l2 or l1
+    col = c2 or c1
+  elseif self.mode == "v-line" then
+    local start_line
+    line, col, start_line = self.view.doc:get_selection_idx(1)
+    local new_cursor_line, new_cursor_col, end_line = self.view.doc:get_selection_idx(2)
+    if new_cursor_line and new_cursor_col then
+      line = new_cursor_line
+      col = new_cursor_col
+    end
+    if line > start_line or end_line == start_line + 1 then
+      col = 0
+    end
+  elseif self.mode == "v-block" then
+    local l1, c1, l2, c2 = find_corners_from_selection(self.view.doc)
+    col = math.min(c1, c2)
+    line = math.min(l1, l2)
+  end
+
+  return line, col
 end
 
 function VimState:on_text_input(text)

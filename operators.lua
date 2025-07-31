@@ -94,6 +94,39 @@ operators.DELETE_STYLE_ALL = 1
 ---Keep one line (for cc and similar commands)
 operators.DELETE_STYLE_KEEP_LINE = 2
 
+---When text is deleted we must move the cursor!
+---@see operators.generic_cut_or_copy
+---@param move_to_line? number
+---@param move_to_col? number
+---@param l1 number
+---@param c1 number
+---@param l2? number | unknown
+---@param c2? number | unknown
+local function adjust_cursor_during_deletion(move_to_line, move_to_col, l1, c1, l2, c2)
+  if move_to_line == nil then
+    return move_to_line, move_to_col
+  end
+
+  if move_to_line < l1 then
+    return move_to_line, move_to_col
+  end
+
+  local line_removal = l2 - l1
+  local col_removal = c2 - c1
+
+  local new_line, new_col = move_to_line, move_to_col
+  if move_to_line > l1 or (move_to_line == l1 and move_to_col > c1) then
+    if move_to_line > l2 then
+      new_line = new_line - line_removal
+    else
+      new_line = l1
+      new_col = (move_to_line == l2 and move_to_col > 2) and new_col - col_removal or c1
+    end
+  end
+
+  return new_line, new_col
+end
+
 ---@param state vimxl.vimstate
 ---@param delete_style 0|1|2
 ---@param motion? vimxl.motion
@@ -115,7 +148,15 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
   local text = ""
   core.cursor_clipboard = {}
   core.cursor_clipboard_whole_line = {}
+
+  -- How many selections that should be deleted.
+  local total_fused = 0
+
+  local move_to_line, move_to_col = state:get_visual_start()
+
   for idx, line1, col1, line2, col2, fused in state:get_operator_selections(motion, numerical_argument) do
+    total_fused = total_fused + fused
+
     local keep_indent = false
     if delete_style == operators.DELETE_STYLE_ALL and line2 >= #state.view.doc.lines then
       -- Handle the deletion of the last lines by removing an extra newline.
@@ -143,18 +184,24 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
       if delete_style ~= operators.DELETE_STYLE_DISABLED then
         doc:remove(line1, col1, line2, col2)
       end
-      -- TODO: Not sure if rm of set_selection is API stable.
-      doc:set_selections(idx, line1, col1, line1, col1, false, fused * 4)
+
+      move_to_line, move_to_col = adjust_cursor_during_deletion(move_to_line, move_to_col, line1, col1, line2, col2)
     end
     core.cursor_clipboard[idx] = text
   end
   core.cursor_clipboard["full"] = full_text
   system.set_clipboard(full_text)
 
-  -- TODO: This isn't the prettiest way of deciding this.
-  if state.mode == "v-block" then
-    state.view.doc:set_selection()
+  if move_to_line and move_to_col then
+    -- TODO: Not sure if rm of set_selection is API stable.
+    doc:set_selections(1, move_to_line, move_to_col, move_to_line, move_to_col, false, total_fused * 4)
   end
+
+
+  -- TODO: This isn't the prettiest way of deciding this.
+  --if state.mode == "v-block" then
+  --  state.view.doc:set_selection()
+  --end
 
   return full_text
 end
