@@ -218,20 +218,10 @@ vim_functions = {
       state:execute_command(text)
     end,
     suggest = function (text)
-      local res = {}
-      local i = 0
-      local wants_forced = text:match("!$") ~= nil
-      for k, v in pairs(vim_available_commands) do
-        local is_forcing = k:match("!$") ~= nil
-        if k:sub(1, #text) == text and wants_forced == is_forcing then
-          i = i + 1
-          res[i] = {
-            text = k,
-            info = v
-          }
-        end
-      end
-      return res
+      -- We could have just done suggest = VimState.get_suggested_commands
+      -- if we redefined get_suggested_commands to not take a self.
+      -- But maybe in the future we will want view specific suggestions?
+      return state:get_suggested_commands(text)
     end
     })
   end,

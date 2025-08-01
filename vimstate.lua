@@ -4,6 +4,7 @@ local command = require "core.command"
 local Object = require "core.object"
 local config = require "core.config"
 local ime = require "core.ime"
+local litexl_keymap = require "core.keymap"
 
 local vim_functions = require "plugins.vimxl.functions"
 local vim_motions = require "plugins.vimxl.motions"
@@ -997,14 +998,59 @@ function VimState:escape_mode()
   self:set_mode("n")
 end
 
+---Should only be used by one function.
+---And should contain the latest set of available Lite XL commands.
+---@see VimState:get_suggested_commands
+local litexl_commands = {}
+
+---@param cmd string
+function VimState:get_suggested_commands(cmd)
+  local res = {}
+  local i = 0
+  local wants_forced = cmd:match("!$") ~= nil
+  for k, v in pairs(vim_available_commands) do
+    local is_forcing = k:match("!$") ~= nil
+    if k:sub(1, #cmd) == cmd and wants_forced == is_forcing then
+      i = i + 1
+      res[i] = {
+        text = k,
+        info = v
+      }
+    end
+  end
+
+  if cmd == "" then
+    -- We don't want to refresh all the time. So let us do it instead when the prompt is empty.
+    litexl_commands = command.get_all_valid()
+  end
+
+  if #res == 0 then
+    for _, v in ipairs(litexl_commands) do
+      if v:sub(1, #cmd) == cmd then
+        i = i + 1
+        res[i] = {
+          text = v,
+          info = litexl_keymap.get_binding(v),
+        }
+      end
+    end
+  end
+
+  return res
+end
+
+---@param cmd string
 function VimState:execute_command(cmd)
   local lookup = vim_available_commands[cmd]
+  if lookup == nil and command.map[cmd] then
+    lookup = cmd
+  end
 
   if lookup == nil then
     core.error("Unknown command: " .. cmd)
   elseif vim_functions[lookup] then
       vim_functions[lookup](self, nil)
-  elseif  command.map[lookup] then
+  elseif command.map[lookup] then
     command.perform(lookup, self.view)
   else
     core.error("Unknown command: " .. cmd)
