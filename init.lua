@@ -116,23 +116,25 @@ local function vim_enabled_view_predicate()
   return vim_mode_predicate()
 end
 
-core.status_view:add_item({
-  predicate = vim_enabled_view_predicate,
-  name = "vimxl:mode",
-  alignment = StatusView.Item.LEFT,
-  get_item = function()
-    local dv = core.active_view
-    local text = "litexl mode"
-    if dv and dv.vim_state then
-      text = dv.vim_state:get_mode_name()
-    end
-    return {
-      style.text, text
-    }
-  end,
-  command = "vimxl:toggle-vi-mode",
-  tooltip = "click to toggle vimxl"
-})
+if not core.status_view:get_item("vimxl:mode") then
+  core.status_view:add_item({
+    predicate = vim_enabled_view_predicate,
+    name = "vimxl:mode",
+    alignment = StatusView.Item.LEFT,
+    get_item = function()
+      local dv = core.active_view
+      local text = "litexl mode"
+      if dv and dv.vim_state then
+        text = dv.vim_state:get_mode_name()
+      end
+      return {
+        style.text, text
+      }
+    end,
+    command = "vimxl:toggle-vi-mode",
+    tooltip = "click to toggle vimxl"
+  })
+end
 
 apply_tracking_patches()
 apply_docview_patches()
