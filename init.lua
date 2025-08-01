@@ -95,6 +95,18 @@ command.add(vim_non_i_mode_predicate, {
       core.quit(true)
     end
   end,
+  ["vimxl:kill-view"] = function ()
+    local node = core.root_view:get_active_node()
+    if node and (not node:is_empty() or not node.is_primary_node) then
+      local do_close = function()
+        node:remove_view(core.root_view.root_node, node.active_view)
+      end
+      node.active_view:try_close(do_close)
+    end
+  end,
+  ["vimxl:test"] = function ()
+      core.log("test command exectued thanks")
+  end,
 })
 
 command.add(DocView, {
