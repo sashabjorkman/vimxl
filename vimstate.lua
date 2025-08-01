@@ -9,6 +9,7 @@ local vim_functions = require "plugins.vimxl.functions"
 local vim_motions = require "plugins.vimxl.motions"
 local vim_keymap = require "plugins.vimxl.keymap"
 local vim_linewise = require "plugins.vimxl.linewise"
+local vim_available_commands = require "plugins.vimxl.available-commands"
 local constants = require "plugins.vimxl.constants"
 
 ---This object is inserted into a DocView to indicate that Vim-mode has been
@@ -994,6 +995,20 @@ end
 
 function VimState:escape_mode()
   self:set_mode("n")
+end
+
+function VimState:execute_command(cmd)
+  local lookup = vim_available_commands[cmd]
+
+  if lookup == nil then
+    core.error("Unknown command: " .. cmd)
+  elseif vim_functions[lookup] then
+      vim_functions[lookup](self, nil)
+  elseif  command.map[lookup] then
+    command.perform(lookup, self.view)
+  else
+    core.error("Unknown command: " .. cmd)
+  end
 end
 
 ---@param docview_draw_caret fun(view: core.docview, x: number, y: number)

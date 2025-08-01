@@ -215,17 +215,7 @@ vim_functions = {
   ["vimxl-normal:command-mode"] = function (state)
     core.command_view:enter("Command", {
     submit = function(text)
-      local lookup = vim_available_commands[text]
-
-      if lookup == nil then
-        core.error("Unknown command: " .. text)
-      elseif vim_functions[lookup] then
-          vim_functions[lookup](state, nil)
-      elseif  command.map[lookup] then
-        command.perform(lookup, state.view)
-      else
-        core.error("Unknown command: " .. text)
-      end
+      state:execute_command(text)
     end,
     suggest = function (text)
       local res = {}

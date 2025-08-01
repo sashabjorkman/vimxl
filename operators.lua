@@ -156,7 +156,6 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
   local total_fused = 0
 
   local move_to_line, move_to_col, line_direction, line_start = state:get_visual_start()
-  --core.error("start %d %d", move_to_line, move_to_col)
 
   for idx, line1, col1, line2, col2, fused in state:get_operator_selections(motion, numerical_argument) do
     total_fused = total_fused + fused
@@ -204,12 +203,6 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
     -- TODO: Not sure if rm of set_selection is API stable.
     doc:set_selections(1, move_to_line, move_to_col, move_to_line, move_to_col, false, total_fused * 4)
   end
-
-
-  -- TODO: This isn't the prettiest way of deciding this.
-  --if state.mode == "v-block" then
-  --  state.view.doc:set_selection()
-  --end
 
   return full_text
 end
