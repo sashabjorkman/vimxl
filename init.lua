@@ -3,6 +3,7 @@
 local core = require "core"
 local style = require "core.style"
 local command = require "core.command"
+local common = require "core.common"
 local DocView = require "core.docview"
 local StatusView = require "core.statusview"
 
@@ -44,6 +45,12 @@ command.add(vim_mode_predicate, {
   end,
   ["vimxl:move-to-next-page"] = function ()
     core.active_view.vim_state:move_or_select(DocView.translate.next_page)
+  end,
+  ["vimxl:open-doc"] = function (_, file_name)
+    -- TODO: file_name == "" should reload the file from disk.
+    if file_name ~= "" and file_name ~= nil then
+      core.root_view:open_doc(core.open_doc(common.home_expand(file_name)))
+    end
   end,
 })
 
