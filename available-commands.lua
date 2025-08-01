@@ -8,6 +8,8 @@ local vim_available_commands = {
   ["q"] = "vimxl:close-or-quit",
   ["q!"] = "vimxl:force-close-or-quit",
   ["bd"] = "vimxl:kill-view",
+  ["e"] = "vimxl:open-doc",
+  --["test"] = "vimxl-normal:argument-test",
 }
 
 ---The commands that we want to be able to use from VimXL's command mode.

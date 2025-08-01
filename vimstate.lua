@@ -1041,6 +1041,12 @@ end
 
 ---@param cmd string
 function VimState:execute_command(cmd)
+
+  local cmd_part, args = cmd:match("^(%S+) (.*)$")
+  if cmd_part and args then
+    cmd = cmd_part
+  end
+
   local lookup = vim_available_commands[cmd]
   if lookup == nil and command.map[cmd] then
     lookup = cmd
@@ -1049,9 +1055,14 @@ function VimState:execute_command(cmd)
   if lookup == nil then
     core.error("Unknown command: " .. cmd)
   elseif vim_functions[lookup] then
-      vim_functions[lookup](self, nil)
+    local numerical_argument = tonumber(args)
+    if numerical_argument == nil and args ~= "" then
+      core.error("Could not convert argument to number")
+    else
+      vim_functions[lookup](self, numerical_argument)
+    end
   elseif command.map[lookup] then
-    command.perform(lookup, self.view)
+    command.perform(lookup, self.view, args)
   else
     core.error("Unknown command: " .. cmd)
   end

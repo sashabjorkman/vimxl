@@ -225,6 +225,9 @@ vim_functions = {
     end
     })
   end,
+  ["vimxl-normal:argument-test"] = function (_, numerical_argument)
+    core.error("Numerical argument: %s", numerical_argument)
+  end,
 }
 
 return vim_functions
