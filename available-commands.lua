@@ -7,6 +7,7 @@ local vim_available_commands = {
   ["qall!"] = "core:force-quit",
   ["q"] = "vimxl:close-or-quit",
   ["q!"] = "vimxl:force-close-or-quit",
+  ["bd"] = "vimxl:kill-view",
   ["e"] = "vimxl:open-doc",
   --["test"] = "vimxl-normal:argument-test",
 }
