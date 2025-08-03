@@ -1,9 +1,10 @@
 -- mod-version:3
 
 local core = require "core"
-local style = require "core.style"
-local command = require "core.command"
 local common = require "core.common"
+local config = require "core.config"
+local command = require "core.command"
+local style = require "core.style"
 local DocView = require "core.docview"
 local StatusView = require "core.statusview"
 
@@ -13,6 +14,22 @@ local apply_autocomplete_patches = require "plugins.vimxl.autocomplete-patcher"
 local constants = require "plugins.vimxl.constants"
 local vim_translate = require "plugins.vimxl.translate"
 local VimState = require "plugins.vimxl.vimstate"
+
+local default_config = {
+  disable_inside_plugins_folder = false,
+}
+default_config.config_spec = {
+  name = "VimXL",
+  {
+    label = "Restricted VimXL Mode",
+    description = "Automatically disable VimXL inside of the VimXL plugin folder",
+    path = "disable_inside_plugins_folder", type = "TOGGLE",
+    default = false,
+  }
+}
+
+config.plugins.vimxl = common.merge(default_config, config.plugins.vimxl)
+
 
 local function vim_mode_predicate()
   local view = core.active_view

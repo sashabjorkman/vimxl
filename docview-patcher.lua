@@ -1,5 +1,6 @@
 local DocView = require "core.docview"
 local common = require "core.common"
+local config = require "core.config"
 local VimState = require "plugins.vimxl.vimstate"
 
 local vimxl_directory = USERDIR .. PATHSEP .. "plugins" .. PATHSEP .. "vimxl"
@@ -17,7 +18,9 @@ local function apply_patches()
   function DocView:new(doc)
     docview_new(self, doc)
 
-    if doc.abs_filename and common.path_belongs_to(doc.abs_filename, vimxl_directory) then
+    if doc.abs_filename
+    and config.plugins.vimxl.disable_inside_plugins_folder
+    and common.path_belongs_to(doc.abs_filename, vimxl_directory) then
       -- Don't open Vim-mode when developing VimXL as that could get annoying.
     else
       self.vim_state = VimState(self)
