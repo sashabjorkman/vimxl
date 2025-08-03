@@ -142,21 +142,17 @@ end
 
 operators.PASTE_DISABLED = 0
 
-operators.PASTE_YES = 1
+operators.PASTE_AFTER_AND_MOVE = 1
 
-operators.PASTE_AFTER_AND_MOVE = 2
-
-operators.PASTE_BEFORE_AND_MOVE = 3
+operators.PASTE_BEFORE_AND_MOVE = 2
 
 ---@param state vimxl.vimstate
 ---@param delete_style 0|1|2
 ---@param should_set_clipboard boolean
----@param paste_style 0|1|2|3
+---@param paste_style 0|1|2|
 ---@param motion? vimxl.motion
 ---@param numerical_argument? number
 function operators.generic_replace(state, delete_style, should_set_clipboard, paste_style, motion, numerical_argument)
-  -- TODO: For block mode, we can use core.cursor_clipboard_whole_line to paste in the correct manner.
-
   local separator = ""
 
   -- TODO: This isn't the prettiest way of deciding this.
@@ -173,7 +169,7 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
   local old_cursor_clipboard = core.cursor_clipboard
   local old_cursor_clipboard_whole_line = core.cursor_clipboard_whole_line
 
-  if paste_style >= operators.PASTE_YES then
+  if paste_style ~= operators.PASTE_DISABLED then
     local old_clipboard = system.get_clipboard()
 
     -- Make sure we are using the latest clipboard data.
@@ -252,9 +248,7 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
     move_to_line = line_start
   end
 
-  local moving_paste = paste_style == operators.PASTE_AFTER_AND_MOVE or paste_style == operators.PASTE_BEFORE_AND_MOVE
-
-  if moving_paste then
+  if paste_style ~= operators.PASTE_DISABLED then
     local did_linewise = false
     local did_charwise = false
     local is_blockwise = old_cursor_clipboard["is_blockwise"]

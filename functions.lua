@@ -1,7 +1,6 @@
 local core = require "core"
 local command = require "core.command"
 
-local constants = require "plugins.vimxl.constants"
 local operators = require "plugins.vimxl.operators"
 local vim_translate = require "plugins.vimxl.translate"
 
@@ -24,31 +23,25 @@ vim_functions = {
     state:escape_mode()
   end,
   ["vimxl-visual:yank"] = function (state)
-    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, true, operators.PASTE_DISABLED)
     state:set_mode("n")
   end,
   ["vimxl-visual:substitute"] = function (state)
-    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
     state:set_mode("i")
   end,
   ["vimxl-visual:change"] = function (state)
-    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
     state:set_mode("i")
   end,
   ["vimxl-visual:delete"] = function (state)
-    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
     state:set_mode("n")
   end,
   ["vimxl-visual:paste"] = function (start_state)
-    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
     start_state:begin_naive_repeatable_command(function (state)
-      operators.generic_replace(state, operators.DELETE_STYLE_ALL, false, operators.PASTE_YES)
+      operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_BEFORE_AND_MOVE)
       state:set_mode("n")
-      --state:move_or_select(vim_translate.left)
     end)
   end,
   ["vimxl-visual:indent"] = function (start_state, numerical_argument)
@@ -133,37 +126,11 @@ vim_functions = {
   end,
   ["vimxl-normal:paste-before"] = function (start_state, numerical_argument)
     start_state:begin_naive_repeatable_command(function (state)
-      --local clip = system.get_clipboard()
-      --if clip:match("\n$") then
-      --  -- Adapted from doc:newline-below
-      --  for idx, line in state.view.doc:get_selections(false, true) do
-      --    local indent = clip:match(constants.LEADING_INDENTATION_REGEX)
-      --    state.view.doc:insert(line, 0, clip)
-      --    state.view.doc:set_selections(idx, line, string.ulen(indent) + 1)
-      --  end
-      --else
-      --  command.perform("doc:paste")
-      --end
       operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_BEFORE_AND_MOVE)
     end, numerical_argument)
   end,
   ["vimxl-normal:paste-after"] = function (start_state, numerical_argument)
     start_state:begin_naive_repeatable_command(function (state)
-      --local clip = system.get_clipboard()
-      --if clip:match("\n$") then
-      --  -- Adapted from doc:newline-below
-      --  for idx, line in state.view.doc:get_selections(false, true) do
-      --    local indent = clip:match(constants.LEADING_INDENTATION_REGEX)
-      --    state.view.doc:insert(line, math.huge, "\n" .. clip:sub(1, -2))
-      --    state.view.doc:set_selections(idx, line + 1, string.ulen(indent) + 1)
-      --  end
-      --else
-      --  -- We use vim_translate.right instead of doc:move-to-next-char
-      --  -- because move-to-next-char will wrap to the next line which is
-      --  -- unwanted behaviour in this case.
-      --  start_state:move_or_select(vim_translate.right)
-      --  command.perform("doc:paste")
-      --end
       operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_AFTER_AND_MOVE)
     end, numerical_argument)
   end,
