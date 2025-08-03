@@ -71,49 +71,41 @@ local normal_and_visual_mode = {
 }
 
 ---@type vimxl.keybind_map
-local visual_mode = {
-  ["v"] = "vimxl-visual:normal-mode",
+local visual_common_mode = {
   ["y"] = "vimxl-visual:yank",
   ["s"] = "vimxl-visual:substitute",
   ["c"] = "vimxl-visual:change",
   ["d"] = "vimxl-visual:delete",
-  [">"] = "vimxl-visual:indent",
-  ["<"] = "vimxl-visual:unindent",
+  ["p"] = "vimxl-visual:paste",
+  ["P"] = "vimxl-visual:paste",
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
   },
+}
+
+---@type vimxl.keybind_map
+local visual_mode = {
+  ["v"] = "vimxl-visual:normal-mode",
+  [">"] = "vimxl-visual:indent",
+  ["<"] = "vimxl-visual:unindent",
 }
 
 ---@type vimxl.keybind_map
 local visual_block_mode = {
   [constants.CTRL_V] = "vimxl-visual:normal-mode",
-  ["y"] = "vimxl-visual:yank",
-  ["s"] = "vimxl-visual:substitute",
-  ["c"] = "vimxl-visual:change",
-  ["d"] = "vimxl-visual:delete",
   ["I"] = "vimxl-visual-block:append-to-start",
   -- TODO: Implement blockwise for them:
   --[">"] = "vimxl-visual-block:indent",
   --["<"] = "vimxl-visual-block:unindent",
-  ["i"] = {
-    ["w"] = "vimxl-motion:select-inner-word",
-  },
 }
 
 ---@type vimxl.keybind_map
 local visual_line_mode = {
   ["V"] = "vimxl-visual:normal-mode",
-  ["y"] = "vimxl-visual:yank",
-  ["s"] = "vimxl-visual:substitute",
-  ["c"] = "vimxl-visual:change",
-  ["d"] = "vimxl-visual:delete",
   -- TODO: If we have moved up then I should enter at the cursor, if we have moved down then it should enter I mode at the start of the selection, very strange.
   --["I"] = "",
   [">"] = "vimxl-visual:indent",
   ["<"] = "vimxl-visual:unindent",
-  ["i"] = {
-    ["w"] = "vimxl-motion:select-inner-word",
-  },
 }
 
 
@@ -147,6 +139,12 @@ for k, v in pairs(normal_and_visual_mode) do
   visual_mode[k] = v
   visual_block_mode[k] = v
   visual_line_mode[k] = v
+end
+
+for k, v in pairs(visual_common_mode) do
+  visual_mode[k] = v
+  visual_line_mode[k] = v
+  visual_block_mode[k] = v
 end
 
 -- Applies globally. This uses the Lite-XL keymap because the Vim-mode keymap

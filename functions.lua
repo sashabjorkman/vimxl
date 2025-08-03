@@ -3,7 +3,6 @@ local command = require "core.command"
 
 local constants = require "plugins.vimxl.constants"
 local operators = require "plugins.vimxl.operators"
-local vim_available_commands = require "plugins.vimxl.available-commands"
 local vim_translate = require "plugins.vimxl.translate"
 
 ---A function that can be invoked through Vim keybinds.
@@ -26,23 +25,31 @@ vim_functions = {
   end,
   ["vimxl-visual:yank"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    operators.generic_cut_or_copy(state, operators.DELETE_STYLE_DISABLED)
+    operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, true, operators.PASTE_DISABLED)
     state:set_mode("n")
   end,
   ["vimxl-visual:substitute"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    operators.generic_cut_or_copy(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL)
+    operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
     state:set_mode("i")
   end,
   ["vimxl-visual:change"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    operators.generic_cut_or_copy(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL)
+    operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
     state:set_mode("i")
   end,
   ["vimxl-visual:delete"] = function (state)
     -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
-    operators.generic_cut_or_copy(state, operators.DELETE_STYLE_ALL)
+    operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
     state:set_mode("n")
+  end,
+  ["vimxl-visual:paste"] = function (start_state)
+    -- TODO: Doesn't work exactly like Vim when using visual block select, try pasting.
+    start_state:begin_naive_repeatable_command(function (state)
+      operators.generic_replace(state, operators.DELETE_STYLE_ALL, false, operators.PASTE_YES)
+      state:set_mode("n")
+      --state:move_or_select(vim_translate.left)
+    end)
   end,
   ["vimxl-visual:indent"] = function (start_state, numerical_argument)
     operators.generic_visual_indent(start_state, numerical_argument, false)
@@ -101,7 +108,7 @@ vim_functions = {
     start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
-        local full_text = operators.generic_cut_or_copy(state, operators.DELETE_STYLE_ALL, motion, numerical_argument)
+        local full_text = operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, motion, numerical_argument)
         if full_text:match("\n$") then
           -- We only want this for linewise motions which is why we detect \n.
           state:move_or_select(vim_translate.first_printable)
@@ -114,48 +121,50 @@ vim_functions = {
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:set_mode("i")
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
-        operators.generic_cut_or_copy(state, operators.DELETE_STYLE_KEEP_LINE, motion, numerical_argument)
+        operators.generic_replace(state, operators.DELETE_STYLE_KEEP_LINE, true, operators.PASTE_DISABLED, motion, numerical_argument)
       end, product_numerical_argument)
     end)
   end,
   ["vimxl-normal:yank"] = function (state, numerical_argument_operator)
     state:expect_motion(function (second_state, motion, numerical_argument_motion)
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
-      operators.generic_cut_or_copy(second_state, operators.DELETE_STYLE_DISABLED, motion, product_numerical_argument)
+      operators.generic_replace(second_state, operators.DELETE_STYLE_DISABLED, true, operators.PASTE_DISABLED, motion, product_numerical_argument)
     end)
   end,
   ["vimxl-normal:paste-before"] = function (start_state, numerical_argument)
     start_state:begin_naive_repeatable_command(function (state)
-      local clip = system.get_clipboard()
-      if clip:match("\n$") then
-        -- Adapted from doc:newline-below
-        for idx, line in state.view.doc:get_selections(false, true) do
-          local indent = clip:match(constants.LEADING_INDENTATION_REGEX)
-          state.view.doc:insert(line, 0, clip)
-          state.view.doc:set_selections(idx, line, string.ulen(indent) + 1)
-        end
-      else
-        command.perform("doc:paste")
-      end
+      --local clip = system.get_clipboard()
+      --if clip:match("\n$") then
+      --  -- Adapted from doc:newline-below
+      --  for idx, line in state.view.doc:get_selections(false, true) do
+      --    local indent = clip:match(constants.LEADING_INDENTATION_REGEX)
+      --    state.view.doc:insert(line, 0, clip)
+      --    state.view.doc:set_selections(idx, line, string.ulen(indent) + 1)
+      --  end
+      --else
+      --  command.perform("doc:paste")
+      --end
+      operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_BEFORE_AND_MOVE)
     end, numerical_argument)
   end,
   ["vimxl-normal:paste-after"] = function (start_state, numerical_argument)
     start_state:begin_naive_repeatable_command(function (state)
-      local clip = system.get_clipboard()
-      if clip:match("\n$") then
-        -- Adapted from doc:newline-below
-        for idx, line in state.view.doc:get_selections(false, true) do
-          local indent = clip:match(constants.LEADING_INDENTATION_REGEX)
-          state.view.doc:insert(line, math.huge, "\n" .. clip:sub(1, -2))
-          state.view.doc:set_selections(idx, line + 1, string.ulen(indent) + 1)
-        end
-      else
-        -- We use vim_translate.right instead of doc:move-to-next-char
-        -- because move-to-next-char will wrap to the next line which is
-        -- unwanted behaviour in this case.
-        start_state:move_or_select(vim_translate.right)
-        command.perform("doc:paste")
-      end
+      --local clip = system.get_clipboard()
+      --if clip:match("\n$") then
+      --  -- Adapted from doc:newline-below
+      --  for idx, line in state.view.doc:get_selections(false, true) do
+      --    local indent = clip:match(constants.LEADING_INDENTATION_REGEX)
+      --    state.view.doc:insert(line, math.huge, "\n" .. clip:sub(1, -2))
+      --    state.view.doc:set_selections(idx, line + 1, string.ulen(indent) + 1)
+      --  end
+      --else
+      --  -- We use vim_translate.right instead of doc:move-to-next-char
+      --  -- because move-to-next-char will wrap to the next line which is
+      --  -- unwanted behaviour in this case.
+      --  start_state:move_or_select(vim_translate.right)
+      --  command.perform("doc:paste")
+      --end
+      operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_AFTER_AND_MOVE)
     end, numerical_argument)
   end,
   ["vimxl-normal:indent"] = function (start_state, numerical_argument_operator)

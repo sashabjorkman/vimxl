@@ -130,11 +130,31 @@ local function adjust_cursor_during_deletion(move_to_line, move_to_col, l1, c1, 
   return new_line, new_col
 end
 
+local function pick_top_left(current_line, current_col, line, col)
+  if line < current_line then
+    return line, col
+  elseif line == current_line and col < current_col then
+    return line, col
+  else
+    return current_line, current_col
+  end
+end
+
+operators.PASTE_DISABLED = 0
+
+operators.PASTE_YES = 1
+
+operators.PASTE_AFTER_AND_MOVE = 2
+
+operators.PASTE_BEFORE_AND_MOVE = 3
+
 ---@param state vimxl.vimstate
 ---@param delete_style 0|1|2
+---@param should_set_clipboard boolean
+---@param paste_style 0|1|2|3
 ---@param motion? vimxl.motion
 ---@param numerical_argument? number
-function operators.generic_cut_or_copy(state, delete_style, motion, numerical_argument)
+function operators.generic_replace(state, delete_style, should_set_clipboard, paste_style, motion, numerical_argument)
   -- TODO: For block mode, we can use core.cursor_clipboard_whole_line to paste in the correct manner.
 
   local separator = ""
@@ -149,13 +169,33 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
 
   local full_text = ""
   local text = ""
-  core.cursor_clipboard = {}
-  core.cursor_clipboard_whole_line = {}
+
+  local old_cursor_clipboard = core.cursor_clipboard
+  local old_cursor_clipboard_whole_line = core.cursor_clipboard_whole_line
+
+  if paste_style >= operators.PASTE_YES then
+    local old_clipboard = system.get_clipboard()
+
+    -- Make sure we are using the latest clipboard data.
+    if old_cursor_clipboard["full"] ~= old_clipboard then
+      old_cursor_clipboard = {}
+      old_cursor_clipboard[1] = old_clipboard
+      old_cursor_clipboard["full"] = old_clipboard
+      old_cursor_clipboard_whole_line = {}
+      old_cursor_clipboard_whole_line[1] = old_clipboard:match("\n$") ~= nil
+    end
+  end
+
+  local new_cursor_clipboard = {}
+  local new_cursor_clipboard_whole_line = {}
 
   -- How many selections that should be deleted.
   local total_fused = 0
 
   local move_to_line, move_to_col, line_direction, line_start = state:get_visual_start()
+
+  local top_line = math.maxinteger
+  local top_col = 0
 
   for idx, line1, col1, line2, col2, fused in state:get_operator_selections(motion, numerical_argument) do
     total_fused = total_fused + fused
@@ -173,10 +213,13 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
       keep_indent = true
     end
 
+    top_line, top_col = pick_top_left(top_line, top_col, line1, col1)
+    top_line, top_col = pick_top_left(top_line, top_col, line2, col2)
+
     if line1 ~= line2 or col1 ~= col2 then
       text = doc:get_text(line1, col1, line2, col2)
       full_text = full_text == "" and text or (text .. separator .. full_text)
-      core.cursor_clipboard_whole_line[idx] = separator == "\n"
+      new_cursor_clipboard_whole_line[idx] = text:match("\n$") ~= nil
 
       if keep_indent then
           -- It is also implied that we keep the indentation. We keep it by skipping over it.
@@ -189,14 +232,91 @@ function operators.generic_cut_or_copy(state, delete_style, motion, numerical_ar
         move_to_line, move_to_col = adjust_cursor_during_deletion(move_to_line, move_to_col, line1, col1, line2, col2, line_direction ~= 0)
       end
     end
-    core.cursor_clipboard[idx] = text
+    new_cursor_clipboard[idx] = text
   end
-  core.cursor_clipboard["full"] = full_text
-  system.set_clipboard(full_text)
+  new_cursor_clipboard["full"] = full_text
+
+  -- TODO: This isn't the prettiest way of deciding this.
+  if state.mode == "v-block" then
+    new_cursor_clipboard["is_blockwise"] = true
+  end
+
+  if should_set_clipboard then
+    core.cursor_clipboard = new_cursor_clipboard
+    core.cursor_clipboard_whole_line = new_cursor_clipboard_whole_line
+    system.set_clipboard(full_text)
+  end
 
   if line_direction > 0 and delete_style == operators.DELETE_STYLE_DISABLED then
     move_to_col = 0
     move_to_line = line_start
+  end
+
+  local moving_paste = paste_style == operators.PASTE_AFTER_AND_MOVE or paste_style == operators.PASTE_BEFORE_AND_MOVE
+
+  if moving_paste then
+    local did_linewise = false
+    local did_charwise = false
+    local is_blockwise = old_cursor_clipboard["is_blockwise"]
+    local indentation = -1
+    local total_pastes = 0
+
+    for k, v in ipairs(old_cursor_clipboard) do
+      total_pastes = total_pastes + 1
+      v = v:gsub("\r", "")
+      local line = top_line + k - 1
+      if old_cursor_clipboard_whole_line[k] and not did_charwise then
+        indentation = string.ulen(v:match(constants.LEADING_INDENTATION_REGEX))
+        did_linewise = true
+
+        local col = top_col
+        if paste_style == operators.PASTE_BEFORE_AND_MOVE then
+          col = 0
+        elseif paste_style == operators.PASTE_AFTER_AND_MOVE then
+          col = math.maxinteger
+          v = "\n" .. v:sub(1, -2)
+        end
+        doc:insert(line, col, v)
+      elseif is_blockwise then
+        local col = top_col
+        if paste_style == operators.PASTE_AFTER_AND_MOVE then
+          col = col + 1
+        end
+
+        doc:insert(line, col, v)
+      else
+        local col = top_col
+        if not did_charwise and paste_style == operators.PASTE_AFTER_AND_MOVE then
+          col = col + 1
+        end
+        did_charwise = true
+
+        doc:insert(top_line, col, v)
+        top_line, top_col = doc:position_offset(top_line, col, #v - 1)
+
+        -- TODO: Check that paste works with multiple non-blockwise old_cursor_clipboard entries (regarding correct paste locations)
+      end
+    end
+
+    if did_charwise then
+      move_to_line, move_to_col = top_line, top_col
+    elseif is_blockwise then
+      if paste_style == operators.PASTE_AFTER_AND_MOVE then
+        move_to_line = top_line
+        move_to_col = top_col + 1
+      elseif paste_style == operators.PASTE_BEFORE_AND_MOVE then
+        move_to_line = top_line
+        move_to_col = top_col
+      end
+    elseif did_linewise then
+      if paste_style == operators.PASTE_AFTER_AND_MOVE then
+        move_to_line = top_line + 1
+        move_to_col = indentation + 1
+      elseif paste_style == operators.PASTE_BEFORE_AND_MOVE then
+        move_to_line = top_line
+        move_to_col = indentation + 1
+      end
+    end
   end
 
   if move_to_line and move_to_col then
