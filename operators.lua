@@ -202,7 +202,6 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
       line1 = line1 - 1
       col1 = #state.view.doc.lines[line1]
       keep_indent = true
-      --core.error("last line %d %d %d %d", line1, col1, line2, col2)
     elseif delete_style == operators.DELETE_STYLE_KEEP_LINE and line1 ~= line2 and col2 <= 1 and col1 <= 1 then
       -- This was a linewise remove. But we don't want to
       -- remove the last newline because of our style.
@@ -320,7 +319,6 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
     end
   end
 
-  core.error("move_to_line_and_col %s %s", tostring(move_to_line), tostring(move_to_col))
   if move_to_line and move_to_line > #doc.lines then
     move_to_line = #doc.lines
   end
