@@ -10,6 +10,7 @@ local vim_linewise = {
   ["vimxl-motion:down"] = true,
   ["vimxl-motion:nth-line-minus-one-printable"] = true,
   ["vimxl-motion:nth-line-printable"] = true,
+  ["vimxl-motion:end-or-line-no"] = true,
 }
 
 return vim_linewise

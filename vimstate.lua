@@ -451,8 +451,13 @@ function VimState:move_or_select(translate_fn, numerical_argument)
 
       -- These are not set the first time we enter v-line mode. So therefor we don't
       -- set end_line in that case.
-      local new_cursor_line, new_cursor_col, new_end_line = state.view.doc:get_selection_idx(2)
+      local new_cursor_line, new_cursor_col, new_end_line, new_end_col = state.view.doc:get_selection_idx(2)
       if new_cursor_line then
+        local line_count = #state.view.doc.lines
+        if new_end_line == line_count and new_end_col == #state.view.doc.lines[line_count] then
+          -- Make sure that we correctly handle the last line.
+          new_end_line = new_end_line + 1
+        end
         cursor_line, cursor_col, end_line = new_cursor_line, new_cursor_col, new_end_line
       end
 

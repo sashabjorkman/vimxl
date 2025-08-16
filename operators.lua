@@ -197,10 +197,12 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
     total_fused = total_fused + fused
 
     local keep_indent = false
-    if delete_style == operators.DELETE_STYLE_ALL and line2 >= #state.view.doc.lines then
+    if delete_style == operators.DELETE_STYLE_ALL and line2 > #state.view.doc.lines then
       -- Handle the deletion of the last lines by removing an extra newline.
       line1 = line1 - 1
       col1 = #state.view.doc.lines[line1]
+      keep_indent = true
+      --core.error("last line %d %d %d %d", line1, col1, line2, col2)
     elseif delete_style == operators.DELETE_STYLE_KEEP_LINE and line1 ~= line2 and col2 <= 1 and col1 <= 1 then
       -- This was a linewise remove. But we don't want to
       -- remove the last newline because of our style.
@@ -217,15 +219,20 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
       full_text = full_text == "" and text or (text .. separator .. full_text)
       new_cursor_clipboard_whole_line[idx] = text:match("\n$") ~= nil
 
+      local leading_whitespace = 0
       if keep_indent then
           -- It is also implied that we keep the indentation. We keep it by skipping over it.
-          local leading_whitespace = #doc.lines[line1]:match(constants.LEADING_INDENTATION_REGEX)
-          col1 = leading_whitespace + 1
+          leading_whitespace = #doc.lines[line1]:match(constants.LEADING_INDENTATION_REGEX)
       end
 
       if delete_style ~= operators.DELETE_STYLE_DISABLED then
         doc:remove(line1, col1, line2, col2)
         move_to_line, move_to_col = adjust_cursor_during_deletion(move_to_line, move_to_col, line1, col1, line2, col2, line_direction ~= 0)
+      end
+
+      if keep_indent then
+        move_to_line = line1
+        move_to_col = leading_whitespace + 1
       end
     end
     new_cursor_clipboard[idx] = text
@@ -311,6 +318,11 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
         move_to_col = indentation + 1
       end
     end
+  end
+
+  core.error("move_to_line_and_col %s %s", tostring(move_to_line), tostring(move_to_col))
+  if move_to_line and move_to_line > #doc.lines then
+    move_to_line = #doc.lines
   end
 
   if move_to_line and move_to_col then
