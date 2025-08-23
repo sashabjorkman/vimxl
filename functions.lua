@@ -135,9 +135,11 @@ vim_functions = {
     end, numerical_argument)
   end,
   ["vimxl-normal:indent"] = function (start_state, numerical_argument_operator)
+    -- TODO: Use the same function is vimxl-visual:indent in the future.
     operators.generic_normal_indent(start_state, numerical_argument_operator, false)
   end,
   ["vimxl-normal:unindent"] = function (start_state, numerical_argument_operator)
+    -- TODO: Use the same function is vimxl-visual:indent in the future.
     operators.generic_normal_indent(start_state, numerical_argument_operator, true)
   end,
   ["vimxl-normal:repeat"] = function (state, numerical_argument)

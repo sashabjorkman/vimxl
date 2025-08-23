@@ -32,7 +32,7 @@ function operators.generic_normal_indent(start_state, numerical_argument_operato
   end)
 end
 
----The purpose is to unselect the newline from both ends
+---The purpose is to unselect the newline from the latter end
 ---of a selection. We only return the new lines because
 ---the users of this function are only interested in lines for now.
 ---Mainly used by:
@@ -42,8 +42,11 @@ end
 ---@param l2 number
 ---@param c2 number
 local function unselect_newline(l1, c1, l2, c2)
-  if l1 > 1 and c1 <= 1 then
-    l1 = l1 - 1
+  if l1 == l2 and c1 == c2 then
+    return l1, l2
+  end
+  if l1 > l2 or (l1 == l2 and c1 > c2) then
+    l1, c1, l2, c2 = l2, c2, l1, c1
   end
   if l2 > 1 and c2 <= 1 then
     l2 = l2 - 1
@@ -67,19 +70,24 @@ function operators.generic_visual_indent(start_state, numerical_argument, uninde
     l1, l2 = unselect_newline(l1, c1, l2, c2)
 
     for line = math.min(l1, l2), math.max(l1, l2) do
-      --table.insert(lines, line - first_line)
       lines[line - first_line] = true
     end
   end
   start_state:begin_naive_repeatable_command(function (state)
     local start_line1, start_line2 = unselect_newline(start_state.view.doc:get_selection())
     local start_line = math.min(start_line1, start_line2)
-    for line in ipairs(lines) do
-      state.view.doc:indent_text(unindent, start_line + line, 0, start_line + line, 1)
+    local lowest_line = math.maxinteger
+    -- We use pairs instead of ipairs to support negative (and zero) indices.
+    for offset in pairs(lines) do
+      local line = start_line + offset
+      lowest_line = math.min(lowest_line, line)
+      state.view.doc:indent_text(unindent, line, 0, line, 1)
     end
     -- Mimic Vim behaviour.
-    if #lines > 0 then
+    if lowest_line ~= math.maxinteger then
       state.view.doc:move_to(vim_translate.first_printable, state.view)
+      local indentation = string.ulen(state.view.doc.lines[lowest_line]:match(constants.LEADING_INDENTATION_REGEX))
+      state.view.doc:set_selection(lowest_line, indentation + 1)
     end
   end, numerical_argument)
   start_state:set_mode("n")
