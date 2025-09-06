@@ -602,7 +602,7 @@ function VimState:on_text_input(text)
     as_litexl_command = lookup_name
   elseif lookup_type == "table" then
     as_keymap = lookup_name
-  elseif type(text) == "string" and string.ubyte(text, 1) <= 57 and string.ubyte(text, 1) >= 48 then
+  elseif type(text) == "string" and #text > 0 and string.ubyte(text, 1) <= 57 and string.ubyte(text, 1) >= 48 then
     as_number = string.ubyte(text, 1) - 48
   elseif lookup_type ~= "nil" then
     -- We handle nil elsewhere
@@ -617,7 +617,7 @@ function VimState:on_text_input(text)
     reset_numerical_argument = false
     reset_keymap = false
   elseif as_litexl_command ~= nil then
-    command.perform(as_litexl_command, self)
+    command.perform(as_litexl_command)
   elseif as_motion ~= nil then
     -- Unset the cb to flag that we no longer expect
     -- a motion. We do this before calling in case we
@@ -1067,7 +1067,7 @@ function VimState:execute_command(cmd)
       vim_functions[lookup](self, numerical_argument)
     end
   elseif command.map[lookup] then
-    command.perform(lookup, self.view, args)
+    command.perform(lookup, self.view, args) -- TODO: Not sure if it is okay to pass these arguments like this.
   else
     core.error("Unknown command: " .. cmd)
   end
