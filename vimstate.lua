@@ -561,16 +561,7 @@ function VimState:get_visual_start()
   return line, col, line_direction, start_line
 end
 
-function VimState:on_text_input(text)
-  if self.mode == "i" then
-    table.insert(self.command_history, {
-      ["type"] = "text_input",
-      ["text"] = text
-    })
-    self.view.doc:text_input(text)
-    return
-  end
-
+function VimState:on_char_input(text)
   -- This variable has no business being enabled if outside of i-mode.
   self.track_primitives = false
 
@@ -691,6 +682,33 @@ function VimState:on_text_input(text)
   if self.repeat_requested then
     self.repeat_requested = false
     self:repeat_commands(false)
+  end
+end
+
+function VimState:on_text_input(text)
+  if self.mode == "i" then
+    table.insert(self.command_history, {
+      ["type"] = "text_input",
+      ["text"] = text
+    })
+    self.view.doc:text_input(text)
+    return
+  end
+
+  if #text <= 1 then
+    -- Since text is just one char (or less) we pass it directly.
+    self:on_char_input(text)
+  else
+    -- The Quetta plugin will sometimes send batched key strokes.
+    -- There are probably other scenarios where batched keys can happen.
+    -- We break these up such that if on_text_input is called
+    -- with batched up commands, we still interpret them correctly
+    -- as if they were individual commands.
+    -- We don't want this for i-mode which is why we check for
+    -- it in the beginning of this function.
+    for char in text:gmatch(".") do
+      self:on_char_input(char)
+    end
   end
 end
 
