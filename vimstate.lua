@@ -695,8 +695,9 @@ function VimState:on_text_input(text)
     return
   end
 
-  if #text <= 1 then
+  if type(text) ~= "string" or #text <= 1 then
     -- Since text is just one char (or less) we pass it directly.
+    -- If we are given a non-string, then it is a special-number, so pass it directly.
     self:on_char_input(text)
   else
     -- The Quetta plugin will sometimes send batched key strokes.
