@@ -29,6 +29,7 @@ vim_functions = {
   ["vimxl-visual:substitute"] = function (state)
     operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, operators.CURSOR_MULTI_LINE)
     state:set_mode("i")
+    -- TODO: Support numerical arguments.
   end,
   ["vimxl-visual:change"] = function (state)
     operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, operators.CURSOR_MULTI_LINE)
@@ -54,12 +55,12 @@ vim_functions = {
   -- Visual block mode specifics
 
   ["vimxl-visual-block:append-to-start"] = function (state)
-    -- TODO: Handle numerical argument.
-    -- TODO: Exiting should put us back where we started, not the end of the multiline edit.
-    -- TODO: Same applies to delete and other commands for that matter.
+    -- In some ways this is an abuse of replace since we neither paste nor copy. But it behaves close enough to what we want.
+    -- TODO: Change the bool to a CLIPBOARD style that is disabled or something like that.
+    operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_DISABLED, operators.CURSOR_MULTI_LINE)
     state:set_mode("i")
-    local _, c1, _, c2 = state.view.doc:get_selection()
-    state:move_or_select(vim_translate.nth_col, math.min(c1, c2))
+    -- TODO: Exiting a multiline-edit from i-mode into n-mode should put us on the first line, not last line. But probably there are edge cases to this?
+    -- TODO: Handle numerical argument.
   end,
 
   -- Normal mode specifics
