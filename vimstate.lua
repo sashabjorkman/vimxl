@@ -946,9 +946,13 @@ end
 ---Makes sure nothing is selected. Useful for leaving visual modes mainly.
 ---@param state vimxl.vimstate
 ---@param is_charwise boolean When true, the operation will collapse as if the cursor is on a char, not between.
-local function collapse_selection(state, is_charwise)
+---@param go_one_back boolean Used if previous was insert-mode to mimic Vim better by going one char back.
+local function collapse_selection(state, is_charwise, go_one_back)
   local l1, c1, l2, c2 = state.view.doc:get_selection()
   if is_charwise and is_selection_going_forward(l1, c1, l2, c2) then
+    c1 = c1 - 1
+  end
+  if go_one_back then
     c1 = c1 - 1
   end
   state.view.doc:set_selection(l1, c1)
@@ -964,7 +968,7 @@ function VimState:set_mode(mode)
 
   self:set_correct_keymap()
   if prev_mode == "n" and (mode == "i" or mode == "v" or mode == "v-block" or mode == "v-line") then
-    collapse_selection(self, false)
+    collapse_selection(self, false, false)
 
     -- During i and v we will track history. So make sure history is clean.
     self.command_history = {}
@@ -974,7 +978,7 @@ function VimState:set_mode(mode)
       self:move_or_select(translate_noop, 0)
     end
   elseif mode == "n" then
-    collapse_selection(self, prev_mode == "v" or prev_mode == "v-block")
+    collapse_selection(self, prev_mode == "v" or prev_mode == "v-block", prev_mode == "i")
 
     -- We have to scan to see if there is a
     -- repeat_everything command in there and see if its
