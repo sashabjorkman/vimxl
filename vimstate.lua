@@ -721,7 +721,7 @@ local function get_operator_selections_iter(invariant, control)
   local selection_invariant = invariant[1]
   local selection_iterator = invariant[2]
   local idx, l1, c1, l2, c2 = selection_iterator(selection_invariant, control)
-
+  local start_l, start_c = l1, c1
   if not idx then
     return nil
   end
@@ -732,8 +732,14 @@ local function get_operator_selections_iter(invariant, control)
   local numerical_argument = invariant[5]
 
   if motion then
-    l1, c1, l2, c2 = motion(view.doc, l1, c1, view, numerical_argument)
+    l1, c1, l2, c2 = motion(view.doc, start_l, start_c, view, numerical_argument)
   end
+
+  -- If the function wasn't a text-object then we make sure the selection
+  -- goes from the cursor to the new location.
+  -- TODO: This is duplicate from the motion_cb handling code in the on_char_input. Maybe on_char_input could be simplified if everything used get_operator_selection instead? Maybe even remove the closure?
+  if l2 == nil then l2 = start_l end
+  if c2 == nil then c2 = start_c end
 
   return idx, l1, c1, l2, c2, 1
 end

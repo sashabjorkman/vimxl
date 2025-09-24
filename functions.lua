@@ -73,14 +73,21 @@ vim_functions = {
   ["vimxl-normal:visual-block-mode"] = function (state)
     state:set_mode("v-block")
   end,
+  ["vimxl-normal:substitute"] = function (start_state, numerical_argument_operator)
+    start_state:set_mode("i")
+    start_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
+        operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, vim_translate.right, numerical_argument or 1)
+    end, numerical_argument_operator)
+  end,
   ["vimxl-normal:insert-mode"] = function (state, numerical_argument)
     state:set_mode("i")
     state:begin_repeatable_history(numerical_argument)
   end,
   ["vimxl-normal:insert-mode-after"] = function (state, numerical_argument)
     state:set_mode("i")
-    state:begin_repeatable_history(numerical_argument)
     state:move_or_select(vim_translate.right)
+    state:begin_repeatable_history(numerical_argument)
+    -- TODO: for perfect vim-emulation we should add a left-translation into history but not execute it (or something like that to place the cursor at the right place in case of 3aAB<esc>)
   end,
   ["vimxl-normal:append-to-start"] = function (state, numerical_argument)
     state:set_mode("i")

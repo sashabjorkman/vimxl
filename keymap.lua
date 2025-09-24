@@ -116,6 +116,7 @@ local normal_mode = {
   [constants.CTRL_V] = "vimxl-normal:visual-block-mode",
   ["i"] = "vimxl-normal:insert-mode",
   ["u"] = "vimxl-normal:undo",
+  ["s"] = "vimxl-normal:substitute",
   ["I"] = "vimxl-normal:append-to-start",
   ["a"] = "vimxl-normal:insert-mode-after",
   ["A"] = "vimxl-normal:append-to-end",
