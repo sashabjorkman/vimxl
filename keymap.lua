@@ -117,6 +117,7 @@ local normal_mode = {
   ["i"] = "vimxl-normal:insert-mode",
   ["u"] = "vimxl-normal:undo",
   ["I"] = "vimxl-normal:append-to-start",
+  ["a"] = "vimxl-normal:insert-mode-after",
   ["A"] = "vimxl-normal:append-to-end",
   ["o"] = "vimxl-normal:newline-below",
   ["O"] = "vimxl-normal:newline-above",

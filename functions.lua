@@ -77,6 +77,11 @@ vim_functions = {
     state:set_mode("i")
     state:begin_repeatable_history(numerical_argument)
   end,
+  ["vimxl-normal:insert-mode-after"] = function (state, numerical_argument)
+    state:set_mode("i")
+    state:begin_repeatable_history(numerical_argument)
+    state:move_or_select(vim_translate.right)
+  end,
   ["vimxl-normal:append-to-start"] = function (state, numerical_argument)
     state:set_mode("i")
     state:begin_repeatable_history(numerical_argument)
