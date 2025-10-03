@@ -78,6 +78,12 @@ local function translate_next_word_start_impl(doc, line, col, continue_to_next_l
   -- On the next line, continue until we have non-whitespace.
   line = line + 1
   col = 0
+
+  local last_line = #doc.lines
+  if line > last_line then
+    return last_line, #doc.lines[last_line] - 1
+  end
+
   last_col = #doc.lines[line]
   while col < last_col do
     col = col + 1
