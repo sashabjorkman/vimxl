@@ -729,7 +729,7 @@ local function get_operator_selections_iter(invariant, control)
   local selection_invariant = invariant[1]
   local selection_iterator = invariant[2]
   local idx, l1, c1, l2, c2 = selection_iterator(selection_invariant, control)
-
+  local start_l, start_c = l1, c1
   if not idx then
     return nil
   end
@@ -740,8 +740,14 @@ local function get_operator_selections_iter(invariant, control)
   local numerical_argument = invariant[6]
 
   if motion then
-    l1, c1, l2, c2 = motion(view.doc, l1, c1, view, numerical_argument)
+    l1, c1, l2, c2 = motion(view.doc, start_l, start_c, view, numerical_argument)
   end
+
+  -- If the function wasn't a text-object then we make sure the selection
+  -- goes from the cursor to the new location.
+  -- TODO: This is duplicate from the motion_cb handling code in the on_char_input. Maybe on_char_input could be simplified if everything used get_operator_selection instead? Maybe even remove the closure?
+  if l2 == nil then l2 = start_l end
+  if c2 == nil then c2 = start_c end
 
   return idx, l1, c1, l2, c2, 1
 end
@@ -955,9 +961,13 @@ end
 ---Makes sure nothing is selected. Useful for leaving visual modes mainly.
 ---@param state vimxl.vimstate
 ---@param is_charwise boolean When true, the operation will collapse as if the cursor is on a char, not between.
-local function collapse_selection(state, is_charwise)
+---@param go_one_back boolean Used if previous was insert-mode to mimic Vim better by going one char back.
+local function collapse_selection(state, is_charwise, go_one_back)
   local l1, c1, l2, c2 = state.view.doc:get_selection()
   if is_charwise and is_selection_going_forward(l1, c1, l2, c2) then
+    c1 = c1 - 1
+  end
+  if go_one_back then
     c1 = c1 - 1
   end
   state.view.doc:set_selection(l1, c1)
@@ -973,7 +983,7 @@ function VimState:set_mode(mode)
 
   self:set_correct_keymap()
   if prev_mode == "n" and (mode == "i" or mode == "v" or mode == "v-block" or mode == "v-line") then
-    collapse_selection(self, false)
+    collapse_selection(self, false, false)
 
     -- During i and v we will track history. So make sure history is clean.
     self.command_history = {}
@@ -983,7 +993,7 @@ function VimState:set_mode(mode)
       self:move_or_select(translate_noop, 0)
     end
   elseif mode == "n" then
-    collapse_selection(self, prev_mode == "v" or prev_mode == "v-block")
+    collapse_selection(self, prev_mode == "v" or prev_mode == "v-block", prev_mode == "i")
 
     -- We have to scan to see if there is a
     -- repeat_everything command in there and see if its

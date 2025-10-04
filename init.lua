@@ -162,6 +162,9 @@ if not core.status_view:get_item("vimxl:mode") then
       local text = "litexl mode"
       if dv and dv.vim_state then
         text = dv.vim_state:get_mode_name()
+        if dv.vim_state.numerical_argument ~= nil then
+          text = text .. " " .. dv.vim_state.numerical_argument
+        end
       end
       return {
         style.text, text

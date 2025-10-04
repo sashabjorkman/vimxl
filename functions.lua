@@ -23,24 +23,25 @@ vim_functions = {
     state:escape_mode()
   end,
   ["vimxl-visual:yank"] = function (state)
-    operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, true, operators.PASTE_DISABLED)
+    operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, true, operators.PASTE_DISABLED, operators.CURSOR_SINGLE_LINE)
     state:set_mode("n")
   end,
   ["vimxl-visual:substitute"] = function (state)
-    operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
+    operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, operators.CURSOR_MULTI_LINE)
     state:set_mode("i")
+    -- TODO: Support numerical arguments.
   end,
   ["vimxl-visual:change"] = function (state)
-    operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
+    operators.generic_replace(state, state.mode == "v-line" and operators.DELETE_STYLE_KEEP_LINE or operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, operators.CURSOR_MULTI_LINE)
     state:set_mode("i")
   end,
   ["vimxl-visual:delete"] = function (state)
-    operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED)
+    operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, operators.CURSOR_SINGLE_LINE)
     state:set_mode("n")
   end,
   ["vimxl-visual:paste"] = function (start_state)
     start_state:begin_naive_repeatable_command(function (state)
-      operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_BEFORE_AND_MOVE)
+      operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_BEFORE_AND_MOVE, operators.CURSOR_SINGLE_LINE)
       state:set_mode("n")
     end)
   end,
@@ -54,12 +55,12 @@ vim_functions = {
   -- Visual block mode specifics
 
   ["vimxl-visual-block:append-to-start"] = function (state)
-    -- TODO: Handle numerical argument.
-    -- TODO: Exiting should put us back where we started, not the end of the multiline edit.
-    -- TODO: Same applies to delete and other commands for that matter.
+    -- In some ways this is an abuse of replace since we neither paste nor copy. But it behaves close enough to what we want.
+    -- TODO: Change the bool to a CLIPBOARD style that is disabled or something like that.
+    operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_DISABLED, operators.CURSOR_MULTI_LINE)
     state:set_mode("i")
-    local _, c1, _, c2 = state.view.doc:get_selection()
-    state:move_or_select(vim_translate.nth_col, math.min(c1, c2))
+    -- TODO: Exiting a multiline-edit from i-mode into n-mode should put us on the first line, not last line. But probably there are edge cases to this?
+    -- TODO: Handle numerical argument.
   end,
 
   -- Normal mode specifics
@@ -73,9 +74,21 @@ vim_functions = {
   ["vimxl-normal:visual-block-mode"] = function (state)
     state:set_mode("v-block")
   end,
+  ["vimxl-normal:substitute"] = function (start_state, numerical_argument_operator)
+    start_state:set_mode("i")
+    start_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
+        operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, operators.CURSOR_SINGLE_LINE, vim_translate.right, numerical_argument or 1)
+    end, numerical_argument_operator)
+  end,
   ["vimxl-normal:insert-mode"] = function (state, numerical_argument)
     state:set_mode("i")
     state:begin_repeatable_history(numerical_argument)
+  end,
+  ["vimxl-normal:insert-mode-after"] = function (state, numerical_argument)
+    state:set_mode("i")
+    state:move_or_select(vim_translate.right)
+    state:begin_repeatable_history(numerical_argument)
+    -- TODO: for perfect vim-emulation we should add a left-translation into history but not execute it (or something like that to place the cursor at the right place in case of 3aAB<esc>)
   end,
   ["vimxl-normal:append-to-start"] = function (state, numerical_argument)
     state:set_mode("i")
@@ -101,7 +114,7 @@ vim_functions = {
     start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
-        local full_text = operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, motion, numerical_argument)
+        local full_text = operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, operators.CURSOR_SINGLE_LINE, motion, numerical_argument)
         if full_text:match("\n$") then
           -- We only want this for linewise motions which is why we detect \n.
           state:move_or_select(vim_translate.first_printable)
@@ -114,24 +127,24 @@ vim_functions = {
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
       second_state:set_mode("i")
       second_state:begin_command_supporting_numerical_argument(function (state, numerical_argument)
-        operators.generic_replace(state, operators.DELETE_STYLE_KEEP_LINE, true, operators.PASTE_DISABLED, motion, numerical_argument)
+        operators.generic_replace(state, operators.DELETE_STYLE_KEEP_LINE, true, operators.PASTE_DISABLED, operators.CURSOR_SINGLE_LINE, motion, numerical_argument)
       end, product_numerical_argument)
     end)
   end,
   ["vimxl-normal:yank"] = function (state, numerical_argument_operator)
     state:expect_motion(function (second_state, motion, numerical_argument_motion)
       local product_numerical_argument = product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
-      operators.generic_replace(second_state, operators.DELETE_STYLE_DISABLED, true, operators.PASTE_DISABLED, motion, product_numerical_argument)
+      operators.generic_replace(second_state, operators.DELETE_STYLE_DISABLED, true, operators.PASTE_DISABLED, operators.CURSOR_SINGLE_LINE, motion, product_numerical_argument)
     end)
   end,
   ["vimxl-normal:paste-before"] = function (start_state, numerical_argument)
     start_state:begin_naive_repeatable_command(function (state)
-      operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_BEFORE_AND_MOVE)
+      operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_BEFORE_AND_MOVE, operators.CURSOR_SINGLE_LINE)
     end, numerical_argument)
   end,
   ["vimxl-normal:paste-after"] = function (start_state, numerical_argument)
     start_state:begin_naive_repeatable_command(function (state)
-      operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_AFTER_AND_MOVE)
+      operators.generic_replace(state, operators.DELETE_STYLE_DISABLED, false, operators.PASTE_AFTER_AND_MOVE, operators.CURSOR_SINGLE_LINE)
     end, numerical_argument)
   end,
   ["vimxl-normal:indent"] = function (start_state, numerical_argument_operator)

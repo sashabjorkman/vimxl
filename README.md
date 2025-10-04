@@ -27,7 +27,7 @@ Which is usually `~/.config/lite-xl/plugins`
 * Search support
 * Yank, delete, change, substitute
 * Indent, unindent
-* Editing commands (`o`, `O`, `A`, `I`, `p`, `P`)
+* Editing commands (`O`, `s`, `a` `A`, `I`, `p`, `P`)
 * Common motions (`w`, `W`, `b`, `B`, `G`, `gg`, `^`, `$`, `_`, `+`, `|`, `f`, `F`, `n`, `N`)
 * Classical Vim navigation (`h`, `j`, `k`, `l`)
 * Very easily extendable (and build your own plugins on top of)

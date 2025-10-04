@@ -154,13 +154,18 @@ operators.PASTE_AFTER_AND_MOVE = 1
 
 operators.PASTE_BEFORE_AND_MOVE = 2
 
+operators.CURSOR_SINGLE_LINE = 0
+
+operators.CURSOR_MULTI_LINE = 1
+
 ---@param state vimxl.vimstate
 ---@param delete_style 0|1|2
 ---@param should_set_clipboard boolean
 ---@param paste_style 0|1|2|
+---@param cursor_style 0|1
 ---@param motion? vimxl.motion
 ---@param numerical_argument? number
-function operators.generic_replace(state, delete_style, should_set_clipboard, paste_style, motion, numerical_argument)
+function operators.generic_replace(state, delete_style, should_set_clipboard, paste_style, cursor_style, motion, numerical_argument)
   local separator = ""
 
   -- TODO: This isn't the prettiest way of deciding this.
@@ -198,6 +203,7 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
 
   local move_to_line, move_to_col, line_direction, line_start = state:get_visual_start()
 
+  local bottom_line = 0
   local top_line = math.maxinteger
   local top_col = 0
 
@@ -220,6 +226,7 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
 
     top_line, top_col = pick_top_left(top_line, top_col, line1, col1)
     top_line, top_col = pick_top_left(top_line, top_col, line2, col2)
+    bottom_line = math.max(bottom_line, math.max(line1, line2))
 
     if line1 ~= line2 or col1 ~= col2 then
       text = doc:get_text(line1, col1, line2, col2)
@@ -334,6 +341,16 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
   if move_to_line and move_to_col then
     -- TODO: Not sure if rm of set_selection is API stable.
     doc:set_selections(1, move_to_line, move_to_col, move_to_line, move_to_col, false, total_fused * 4)
+    if cursor_style == operators.CURSOR_MULTI_LINE then
+      local total_lines = bottom_line - top_line
+      for offset = 1, total_lines do
+        local line = move_to_line + offset
+        if #doc.lines[line] >= move_to_col then
+          -- Vim doesn't affect lines that are too short.
+          doc:add_selection(line, move_to_col, line, move_to_col)
+        end
+      end
+    end
   end
 
   return full_text
