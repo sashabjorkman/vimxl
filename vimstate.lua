@@ -122,10 +122,15 @@ function VimState:new(view)
   ---This is mainly used for a less intrusive way of tracking autocomplete.
   self.track_primitives = false
 end
+
+---0 means charwise
+---1 means linewise
+---@alias vimxl.motion_mode 0|1
+
 ---This callback has a chance to be triggered after a valid motion
 ---is detected. However it can also never be called if the user fails
 ---to provide a valid motion on the first try. 
----@alias vimxl.motion_cb fun(state: vimxl.vimstate, motion: vimxl.motion, numerical_argument: number)
+---@alias vimxl.motion_cb fun(state: vimxl.vimstate, motion: vimxl.motion, motion_mode: vimxl.motion_mode, numerical_argument: number)
 
 ---Inform Vim that we a command has kindly asked for a motion.
 ---@param cb vimxl.motion_cb
@@ -713,9 +718,12 @@ function VimState:on_text_input(text)
   end
 end
 
+---@alias vimxl.operator_selection_iter_invariant [any, any, vimxl.motion|nil, core.docview, vimxl.motion_mode, number]
+
 ---An iterator of document selections that will apply a motion before
 ---returning a result.
 ---@see get_operator_selections
+---@param invariant vimxl.operator_selection_iter_invariant
 ---@param control number
 local function get_operator_selections_iter(invariant, control)
   local selection_invariant = invariant[1]
@@ -726,10 +734,10 @@ local function get_operator_selections_iter(invariant, control)
     return nil
   end
 
-  ---@type vimxl.motion | nil
   local motion = invariant[3]
   local view = invariant[4]
-  local numerical_argument = invariant[5]
+  local motion_mode = invariant[5]
+  local numerical_argument = invariant[6]
 
   if motion then
     l1, c1, l2, c2 = motion(view.doc, l1, c1, view, numerical_argument)
@@ -782,14 +790,15 @@ end
 ---It should support all known visual-select modes.
 ---And will apply the motion automatically for you.
 ---@param motion? vimxl.motion
+---@param motion_mode vimxl.motion_mode
 ---@param numerical_argument? number
-function VimState:get_operator_selections(motion, numerical_argument)
+function VimState:get_operator_selections(motion, motion_mode, numerical_argument)
   if self.mode == "v-line" and motion == nil then
      return merged_selection_iter, self.view.doc, 0
   end
 
   local selection_iter, selection_invariant, control = self.view.doc:get_selections(false, true)
-  local invariant = { selection_invariant, selection_iter, motion, self.view, numerical_argument }
+  local invariant = { selection_invariant, selection_iter, motion, self.view, motion_mode, numerical_argument }
   return get_operator_selections_iter, invariant, control
 end
 
