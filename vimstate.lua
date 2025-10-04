@@ -9,7 +9,7 @@ local litexl_keymap = require "core.keymap"
 local vim_functions = require "plugins.vimxl.functions"
 local vim_motions = require "plugins.vimxl.motions"
 local vim_keymap = require "plugins.vimxl.keymap"
-local vim_linewise = require "plugins.vimxl.linewise"
+local vim_motionmodes = require "plugins.vimxl.motionmodes"
 local vim_available_commands = require "plugins.vimxl.available-commands"
 local constants = require "plugins.vimxl.constants"
 
@@ -123,14 +123,10 @@ function VimState:new(view)
   self.track_primitives = false
 end
 
----0 means charwise
----1 means linewise
----@alias vimxl.motion_mode 0|1
-
 ---This callback has a chance to be triggered after a valid motion
 ---is detected. However it can also never be called if the user fails
 ---to provide a valid motion on the first try. 
----@alias vimxl.motion_cb fun(state: vimxl.vimstate, motion: vimxl.motion, motion_mode: vimxl.motion_mode, numerical_argument: number)
+---@alias vimxl.motion_cb fun(state: vimxl.vimstate, motion_mode: vimxl.motion_mode, motion: vimxl.motion, numerical_argument: number)
 
 ---Inform Vim that we a command has kindly asked for a motion.
 ---@param cb vimxl.motion_cb
@@ -621,37 +617,12 @@ function VimState:on_char_input(text)
     local motion_cb = self.operator_got_motion_cb
     self.operator_got_motion_cb = nil
 
-    local is_linewise = vim_linewise[lookup_name]
+    local is_linewise = vim_motionmodes.linewise[lookup_name]
 
     -- Either we move or we call the cb. Anything else would be silly...
     if motion_cb then
-      motion_cb(self, function (doc, line, col, view, numerical_argument)
-        -- We create a new lambda scope each time we use a motion
-        -- together with an operator. This might seem inefficient but
-        -- it is actually to avoid having to create and store many different
-        -- variations of similar translations.
-
-        local l1, c1, l2, c2 = as_motion(doc, line, col, view, numerical_argument)
-
-        -- If the function wasn't a text-object then we make sure the selection
-        -- goes from the cursor to the new location.
-        if l2 == nil then l2 = line end
-        if c2 == nil then c2 = col end
-
-        -- Sanitize them for the is_linewise step.
-        -- Otherwise we end up incrementing the wrong thing.
-        if l1 > l2 or l1 == l2 and c1 > c2 then
-          l1, c1, l2, c2 = l2, c2, l1, c1
-        end
-
-        if is_linewise then
-          c1 = 0
-          c2 = 0
-          l2 = l2 + 1
-        end
-
-        return l1, c1, l2, c2
-      end, self.numerical_argument)
+      local motion_mode = is_linewise and vim_motionmodes.MOTION_MODE_LINEWISE or vim_motionmodes.MOTION_MODE_CHARWISE
+      motion_cb(self, motion_mode, as_motion, self.numerical_argument)
     else
       -- Because the key we used for our lookup was
       -- found in the vim_motions table
@@ -745,9 +716,20 @@ local function get_operator_selections_iter(invariant, control)
 
   -- If the function wasn't a text-object then we make sure the selection
   -- goes from the cursor to the new location.
-  -- TODO: This is duplicate from the motion_cb handling code in the on_char_input. Maybe on_char_input could be simplified if everything used get_operator_selection instead? Maybe even remove the closure?
   if l2 == nil then l2 = start_l end
   if c2 == nil then c2 = start_c end
+
+  -- Sanitize them for the is_linewise step.
+  -- Otherwise we end up incrementing the wrong thing.
+  if l1 > l2 or l1 == l2 and c1 > c2 then
+    l1, c1, l2, c2 = l2, c2, l1, c1
+  end
+
+  if motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE then
+    c1 = 0
+    c2 = 0
+    l2 = l2 + 1
+  end
 
   return idx, l1, c1, l2, c2, 1
 end
@@ -795,10 +777,10 @@ end
 ---that the operator should make changes to.
 ---It should support all known visual-select modes.
 ---And will apply the motion automatically for you.
----@param motion? vimxl.motion
 ---@param motion_mode vimxl.motion_mode
+---@param motion? vimxl.motion
 ---@param numerical_argument? number
-function VimState:get_operator_selections(motion, motion_mode, numerical_argument)
+function VimState:get_operator_selections(motion_mode, motion, numerical_argument)
   if self.mode == "v-line" and motion == nil then
      return merged_selection_iter, self.view.doc, 0
   end

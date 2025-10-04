@@ -13,4 +13,12 @@ local vim_linewise = {
   ["vimxl-motion:end-or-line-no"] = true,
 }
 
-return vim_linewise
+---0 means charwise
+---1 means linewise
+---@alias vimxl.motion_mode 0|1
+
+return {
+  linewise = vim_linewise,
+  MOTION_MODE_CHARWISE = 0,
+  MOTION_MODE_LINEWISE = 1,
+}

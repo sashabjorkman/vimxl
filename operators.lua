@@ -1,6 +1,7 @@
 local core = require "core"
 local constants = require "plugins.vimxl.constants"
 local vim_translate = require "plugins.vimxl.translate"
+local vim_motionmodes = require "plugins.vimxl.motionmodes"
 
 ---Contains functions useful for creating operators. A bit of a misnomer.
 ---But in some sense it contains "generic" operators.
@@ -20,11 +21,10 @@ end
 ---@param numerical_argument_operator? number
 ---@param unindent boolean
 function operators.generic_normal_indent(start_state, numerical_argument_operator, unindent)
-  start_state:expect_motion(function (second_state, motion, numerical_argument_motion)
+  start_state:expect_motion(function (second_state, motion_mode, motion, numerical_argument_motion)
     local product_numerical_argument = operators.product_with_strange_default(numerical_argument_operator, numerical_argument_motion)
     second_state:begin_naive_repeatable_command(function (state)
-      for _, line, col in state.view.doc:get_selections(true) do
-        local l1, c1, l2, c2 = motion(state.view.doc, line, col, state.view, product_numerical_argument)
+      for _, l1, c1, l2, c2 in state:get_operator_selections(motion_mode, motion, product_numerical_argument) do
         l2 = l2 - 1
         state.view.doc:indent_text(unindent, l1, c1, l2, c2)
       end
@@ -163,9 +163,10 @@ operators.CURSOR_MULTI_LINE = 1
 ---@param should_set_clipboard boolean
 ---@param paste_style 0|1|2|
 ---@param cursor_style 0|1
+---@param motion_mode vimxl.motion_mode
 ---@param motion? vimxl.motion
 ---@param numerical_argument? number
-function operators.generic_replace(state, delete_style, should_set_clipboard, paste_style, cursor_style, motion, numerical_argument)
+function operators.generic_replace(state, delete_style, should_set_clipboard, paste_style, cursor_style, motion_mode, motion, numerical_argument)
   local separator = ""
 
   -- TODO: This isn't the prettiest way of deciding this.
@@ -207,7 +208,7 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
   local top_line = math.maxinteger
   local top_col = 0
 
-  for idx, line1, col1, line2, col2, fused in state:get_operator_selections(motion, numerical_argument) do
+  for idx, line1, col1, line2, col2, fused in state:get_operator_selections(motion_mode, motion, numerical_argument) do
     total_fused = total_fused + fused
 
     local keep_indent = false
