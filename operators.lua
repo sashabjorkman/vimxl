@@ -161,7 +161,7 @@ operators.CURSOR_MULTI_LINE = 1
 ---@param state vimxl.vimstate
 ---@param delete_style 0|1|2
 ---@param should_set_clipboard boolean
----@param paste_style 0|1|2|
+---@param paste_style 0|1|2
 ---@param cursor_style 0|1
 ---@param motion_mode vimxl.motion_mode
 ---@param motion? vimxl.motion
@@ -178,7 +178,6 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
   local doc = state.view.doc
 
   local full_text = ""
-  local text = ""
 
   local old_cursor_clipboard = core.cursor_clipboard
   local old_cursor_clipboard_whole_line = core.cursor_clipboard_whole_line
@@ -230,7 +229,15 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
     bottom_line = math.max(bottom_line, math.max(line1, line2))
 
     if line1 ~= line2 or col1 ~= col2 then
-      text = doc:get_text(line1, col1, line2, col2)
+      local text = doc:get_text(line1, col1, line2, col2)
+
+      local at_end_of_line = line2 > #doc.lines or (col2 >= #doc.lines[line2])
+      if at_end_of_line and motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE and not text:match("\n$") then
+        -- Make sure that we have a line-ending always if we are in linewise mode and are outside the bounds.
+        -- In other words, at the end of the file.
+        text = text .. "\n"
+      end
+
       full_text = full_text == "" and text or (text .. separator .. full_text)
       new_cursor_clipboard_whole_line[idx] = text:match("\n$") ~= nil
 
@@ -249,9 +256,12 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
         move_to_line = line1
         move_to_col = leading_whitespace + 1
       end
+      new_cursor_clipboard[idx] = text
+    else
+      new_cursor_clipboard[idx] = ""
     end
-    new_cursor_clipboard[idx] = text
   end
+
   new_cursor_clipboard["full"] = full_text
 
   -- TODO: This isn't the prettiest way of deciding this.
