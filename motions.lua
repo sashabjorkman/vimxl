@@ -37,6 +37,7 @@ local vim_motions = {
   ["vimxl-motion:entire-current-line-or-more"] = vim_translate.entire_current_line_or_more,
   ["vimxl-motion:next-word"] = vim_translate.next_word_start,
   ["vimxl-motion:next-word-by-whitespace"] = vim_translate.next_word_start_by_whitespace,
+  ["vimxl-motion:end-of-word"] = vim_translate.end_of_word,
 
   -- Normal and visual mode specifics.
   ["vimxl-motion:next-word-multiline"] = vim_translate.next_word_start_multiline,
