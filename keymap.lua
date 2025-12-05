@@ -64,10 +64,6 @@ local normal_and_visual_mode = {
   ["W"] = "vimxl-motion:next-word-by-whitespace-multiline",
   ["b"] = "vimxl-motion:prev-word",
   ["B"] = "vimxl-motion:prev-word-by-whitespace",
-  ["k"] = "vimxl-motion:up",
-  ["j"] = "vimxl-motion:down",
-  ["h"] = "vimxl-motion:left",
-  ["l"] = "vimxl-motion:right-clamped",
   ["f"] = find_motions.navigate_forward,
   ["F"] = find_motions.navigate_backward,
 }
@@ -80,6 +76,10 @@ local visual_common_mode = {
   ["d"] = "vimxl-visual:delete",
   ["p"] = "vimxl-visual:paste",
   ["P"] = "vimxl-visual:paste",
+  ["k"] = "vimxl-motion:visual-up",
+  ["j"] = "vimxl-motion:visual-down",
+  ["h"] = "vimxl-motion:visual-left",
+  ["l"] = "vimxl-motion:visual-right-clamped",
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
   },
@@ -136,6 +136,11 @@ local normal_mode = {
   ["N"] = "vimxl-normal:previous-find",
   ["."] = "vimxl-normal:repeat",
   [":"] = "vimxl-normal:command-mode",
+
+  ["k"] = "vimxl-motion:up",
+  ["j"] = "vimxl-motion:down",
+  ["h"] = "vimxl-motion:left",
+  ["l"] = "vimxl-motion:right-clamped",
 }
 
 for k, v in pairs(normal_and_visual_mode) do

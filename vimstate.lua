@@ -637,12 +637,19 @@ function VimState:on_char_input(text)
     local motion_cb = self.operator_got_motion_cb
     self.operator_got_motion_cb = nil
 
+    -- Text objects are not allowed in normal mode.
     local is_linewise = vim_motionmodes.linewise[lookup_name]
     local motion_mode = is_linewise and vim_motionmodes.MOTION_MODE_LINEWISE or vim_motionmodes.MOTION_MODE_CHARWISE
 
     -- Either we move or we call the cb. Anything else would be silly...
     if motion_cb then
       motion_cb(self, motion_mode, as_motion, self.numerical_argument)
+    elseif self.mode == "n" then
+      -- Text objects do not make sense in normal mode.
+      -- So we ignore motion_mode.
+      -- However, we do allow them in motion pending mode (which is also mode=="n" in VimXL)
+      -- Which is why this is done after checking if motion_cb was set.
+      self:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, as_motion, self.numerical_argument)
     else
       -- Because the key we used for our lookup was
       -- found in the vim_motions table
