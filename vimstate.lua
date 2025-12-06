@@ -125,7 +125,7 @@ end
 
 ---This callback has a chance to be triggered after a valid motion
 ---is detected. However it can also never be called if the user fails
----to provide a valid motion on the first try. 
+---to provide a valid motion on the first try.
 ---@alias vimxl.motion_cb fun(state: vimxl.vimstate, motion_mode: vimxl.motion_mode, motion: vimxl.motion, numerical_argument: number)
 
 ---Inform Vim that we a command has kindly asked for a motion.
@@ -377,9 +377,22 @@ end
 
 ---Make a movement/selection within the current document, but also
 ---record to history if necessary so that the movement may be repeated.
+---@param motion_mode vimxl.motion_mode
 ---@param translate_fn vimxl.motion
----@param numerical_argument? number 
-function VimState:move_or_select(translate_fn, numerical_argument)
+---@param numerical_argument? number
+function VimState:move_or_select(motion_mode, translate_fn, numerical_argument)
+
+  -- We might want to switch modes if we are at a "neutral" position into line mode.
+  -- This behaviour depends on the motion mode.
+  local corner1_line, corner1_col, corner2_line, corner2_col = find_corners_from_selection(self.view.doc)
+  local is_visual = self.mode == "v" or self.mode == "v-block" or self.mode == "v-line"
+  local same_col = (corner1_col == corner2_col + 1 or corner1_col == corner2_col)
+  if corner1_line == corner2_line and same_col then
+    if motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE then
+      self.mode = "v-line"
+    end
+  end
+
   if self.mode == "v" then
     ---@param state vimxl.vimstate
     local function vim_style_visual_select_to(state)
@@ -473,18 +486,25 @@ function VimState:move_or_select(translate_fn, numerical_argument)
       local l1, c1, l2, c2 = translate_fn(state.view.doc, cursor_line, cursor_col, state.view, numerical_argument)
 
       if state.mode == "v-line" and l2 ~= nil and c2 ~= nil then
-        -- If we get a text object, just select that text object
-        -- and enter ordinary visual mode. As is done in Vim.
-        -- TOOD: This doesn't actually seem entirely correct, some text objects like inner word don't do this, while "i(" does.
-        state:set_mode("v")
-        if c1 == c2 then
-          c1 = c1 + 1
+        if motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE and old_direction == DIRECTION_NEUTRAL then
+          -- We got a linewise text object, so select the spanning lines.
+          -- But only if we have not already started selecting other things.
+          vim_style_visual_line_select_impl(state.view.doc, l2, c2, l1, c1, DIRECTION_FORWARD)
+          return
+        elseif motion_mode == vim_motionmodes.MOTION_MODE_CHARWISE then
+          -- If we get a text object, just select that text object
+          -- and enter ordinary visual mode. As is done in Vim.
+          -- TOOD: This doesn't actually seem entirely correct, some text objects like inner word don't do this, while "i(" does.
+          state:set_mode("v")
+          if c1 == c2 then
+            c1 = c1 + 1
+          end
+          if is_selection_going_forward(l2, c2, l1, c1) then
+            l1, c1, l2, c2 = l2, c2, l1, c1
+          end
+          state.view.doc:set_selection(l1, c1, l2, c2)
+          return
         end
-        if is_selection_going_forward(l2, c2, l1, c1) then
-          l1, c1, l2, c2 = l2, c2, l1, c1
-        end
-        state.view.doc:set_selection(l1, c1, l2, c2)
-        return
       end
 
       vim_style_visual_line_select_impl(state.view.doc, l1, c1, start_line, end_line, old_direction)
@@ -618,17 +638,17 @@ function VimState:on_char_input(text)
     self.operator_got_motion_cb = nil
 
     local is_linewise = vim_motionmodes.linewise[lookup_name]
+    local motion_mode = is_linewise and vim_motionmodes.MOTION_MODE_LINEWISE or vim_motionmodes.MOTION_MODE_CHARWISE
 
     -- Either we move or we call the cb. Anything else would be silly...
     if motion_cb then
-      local motion_mode = is_linewise and vim_motionmodes.MOTION_MODE_LINEWISE or vim_motionmodes.MOTION_MODE_CHARWISE
       motion_cb(self, motion_mode, as_motion, self.numerical_argument)
     else
       -- Because the key we used for our lookup was
       -- found in the vim_motions table
       -- we try to use it as such and do a move or select
       -- depending on the mode.
-      self:move_or_select(as_motion, self.numerical_argument)
+      self:move_or_select(motion_mode, as_motion, self.numerical_argument)
     end
   elseif as_function ~= nil and self.operator_got_motion_cb ~= nil then
     core.error("Expected motion but got Vim function")
@@ -972,7 +992,7 @@ function VimState:set_mode(mode)
 
     -- Make the cursor actually select something.
     if mode == "v" or mode == "v-block" or mode == "v-line" then
-      self:move_or_select(translate_noop, 0)
+      self:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, translate_noop, 0)
     end
   elseif mode == "n" then
     collapse_selection(self, prev_mode == "v" or prev_mode == "v-block", prev_mode == "i")

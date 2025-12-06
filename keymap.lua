@@ -7,7 +7,7 @@ local constants = require "plugins.vimxl.constants"
 local find_motions = require "plugins.vimxl.find-motions"
 
 ---Normally used as a key inside of keymaps.
----It suppports numbers because that is how we encode special cases 
+---It suppports numbers because that is how we encode special cases
 ---like repeat motion names (yy) or a leading zero.
 ---@alias vimxl.lookup_name string|number
 ---

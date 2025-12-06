@@ -1,9 +1,9 @@
 -- Vim and LiteXL implement some basic translations a bit differnetly.
--- This file contains functions that implement the correct Vim behaviour. 
+-- This file contains functions that implement the correct Vim behaviour.
 
 local constants = require "plugins.vimxl.constants"
 
--- Currently only used to forward prev_char next_char. 
+-- Currently only used to forward prev_char next_char.
 -- TODO: Maybe reimplement and drop the dependency? We want clamping anyway...
 local doc_translate = require "core.doc.translate"
 

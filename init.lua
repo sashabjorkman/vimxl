@@ -13,6 +13,7 @@ local apply_tracking_patches = require "plugins.vimxl.chronicle"
 local apply_autocomplete_patches = require "plugins.vimxl.autocomplete-patcher"
 local constants = require "plugins.vimxl.constants"
 local vim_translate = require "plugins.vimxl.translate"
+local vim_motionmodes = require "plugins.vimxl.motionmodes"
 local VimState = require "plugins.vimxl.vimstate"
 
 local default_config = {
@@ -43,25 +44,25 @@ command.add(vim_mode_predicate, {
     core.active_view.vim_state:escape_mode()
   end,
   ["vimxl:move-to-previous-char"] = function ()
-    core.active_view.vim_state:move_or_select(vim_translate.previous_char)
+    core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, vim_translate.previous_char)
   end,
   ["vimxl:move-to-next-char"] = function ()
     -- TODO: Should we clamp inside of normal mode? In that case maybe
     -- previous-char also shouldn't wrap in normal mode?
     -- Also mouse cursor clicks should be line-len clamped as well then...
-    core.active_view.vim_state:move_or_select(vim_translate.next_char)
+    core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, vim_translate.next_char)
   end,
   ["vimxl:move-to-previous-line"] = function ()
-    core.active_view.vim_state:move_or_select(DocView.translate.previous_line)
+    core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, DocView.translate.previous_line)
   end,
   ["vimxl:move-to-next-line"] = function ()
-    core.active_view.vim_state:move_or_select(DocView.translate.next_line)
+    core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, DocView.translate.next_line)
   end,
   ["vimxl:move-to-previous-page"] = function ()
-    core.active_view.vim_state:move_or_select(DocView.translate.previous_page)
+    core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, DocView.translate.previous_page)
   end,
   ["vimxl:move-to-next-page"] = function ()
-    core.active_view.vim_state:move_or_select(DocView.translate.next_page)
+    core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, DocView.translate.next_page)
   end,
   ["vimxl:open-doc"] = function (_, file_name)
     -- TODO: file_name == "" should reload the file from disk.

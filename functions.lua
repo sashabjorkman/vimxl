@@ -87,14 +87,14 @@ vim_functions = {
   end,
   ["vimxl-normal:insert-mode-after"] = function (state, numerical_argument)
     state:set_mode("i")
-    state:move_or_select(vim_translate.right)
+    state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, vim_translate.right)
     state:begin_repeatable_history(numerical_argument)
     -- TODO: for perfect vim-emulation we should add a left-translation into history but not execute it (or something like that to place the cursor at the right place in case of 3aAB<esc>)
   end,
   ["vimxl-normal:append-to-start"] = function (state, numerical_argument)
     state:set_mode("i")
     state:begin_repeatable_history(numerical_argument)
-    state:move_or_select(vim_translate.first_printable)
+    state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, vim_translate.first_printable)
   end,
   ["vimxl-normal:append-to-end"] = function (state, numerical_argument)
     state:set_mode("i")
@@ -118,7 +118,7 @@ vim_functions = {
         local full_text = operators.generic_replace(state, operators.DELETE_STYLE_ALL, true, operators.PASTE_DISABLED, operators.CURSOR_SINGLE_LINE, motion_mode, motion, numerical_argument)
         if full_text:match("\n$") then
           -- We only want this for linewise motions which is why we detect \n.
-          state:move_or_select(vim_translate.first_printable)
+          state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, vim_translate.first_printable)
         end
       end, product_numerical_argument)
     end)
