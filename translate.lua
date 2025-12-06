@@ -96,6 +96,63 @@ local function translate_next_word_start_impl(doc, line, col, continue_to_next_l
   return line, 0
 end
 
+---Don't call directly.
+---@param doc core.doc
+---@param line number
+---@param col number
+local function translate_end_of_word_once(doc, line, col)
+
+  -- Check if we're already at the end of a word/line
+  if not is_whitespace(doc:get_char(line, col)) then
+    local type = classify_type(doc:get_char(line, col))
+    if col == #doc.lines[line] then
+      -- At end of current line, move to next line,
+      -- or stop if it's the last line
+      if line == #doc.lines then return line, col end
+      col = 1
+      line = line + 1
+    elseif classify_type(doc:get_char(line, col + 1)) ~= type then
+      -- At end of current word, move one step forward
+      col = col + 1
+    end
+  end
+
+  -- Skip whitespace
+  while is_whitespace(doc:get_char(line, col)) do
+    if col == #doc.lines[line] then
+      -- At end of current line, move to next line,
+      -- or stop if it's the last line
+      if line == #doc.lines then return line, col end
+      col = 1
+      line = line + 1
+    else
+      col = col + 1
+    end
+  end
+
+  local type = classify_type(doc:get_char(line, col))
+
+  while classify_type(doc:get_char(line, col)) == type do
+    if col == #doc.lines[line] then
+      -- End of line, done
+      return line, col
+    end
+
+    col = col + 1
+  end
+
+  return line, col - 1
+end
+
+---@type vimxl.motion
+function vim_translate.end_of_word(doc, line, col, _, numerical_argument)
+  if numerical_argument == nil or numerical_argument < 1 then numerical_argument = 1 end
+  for _ = 1, numerical_argument do
+    line, col = translate_end_of_word_once(doc, line, col)
+  end
+  return line, col
+end
+
 ---@type vimxl.motion
 function vim_translate.next_word_start(doc, line, col, _, numerical_argument)
   if numerical_argument == nil or numerical_argument < 1 then numerical_argument = 1 end
