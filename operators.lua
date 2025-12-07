@@ -232,7 +232,7 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
       local text = doc:get_text(line1, col1, line2, col2)
 
       local at_end_of_line = line2 > #doc.lines or (col2 >= #doc.lines[line2])
-      if at_end_of_line and motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE and not text:match("\n$") then
+      if at_end_of_line and motion_mode.is_linewise and not text:match("\n$") then
         -- Make sure that we have a line-ending always if we are in linewise mode and are outside the bounds.
         -- In other words, at the end of the file.
         text = text .. "\n"

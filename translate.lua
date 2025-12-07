@@ -242,7 +242,7 @@ local function translate_prev_word_start_impl(doc, line, col)
   -- Correctly emulate the b command from Vim.
   -- Unlike the equivalent Lite-XL built-in translation,
   -- this translation will stop on non-words as well as line-start
-  -- to better mimic Vim itself. 
+  -- to better mimic Vim itself.
 
   local start_col = col
 

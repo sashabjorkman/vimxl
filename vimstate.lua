@@ -146,11 +146,12 @@ end
 ---@param start_line number
 ---@param start_col number
 ---@param view core.docview
----@param numerical_argument? number
+---@param motion_mode vimxl.motion_mode
 ---@param translate_fn vimxl.motion
+---@param numerical_argument? number
 ---@param end_line number
 ---@param end_col number
-local function vim_style_visual_select_to_impl(doc, start_line, start_col, view, numerical_argument, translate_fn, end_line, end_col)
+local function vim_style_visual_select_to_impl(doc, start_line, start_col, view, motion_mode, translate_fn, numerical_argument, end_line, end_col)
   -- Detect if a character is not currently selected and if so correct that.
   if start_line == end_line and start_col == end_col then
     start_col = start_col + 1
@@ -170,7 +171,7 @@ local function vim_style_visual_select_to_impl(doc, start_line, start_col, view,
   local got_text_object = false
 
   -- Got text object. Extend current extension.
-  if l2 ~= nil and c2 ~= nil then
+  if motion_mode.is_text_object and l2 ~= nil and c2 ~= nil then
     -- Sort them. Such that the default selection is "going forward".
     if not is_selection_going_forward(l1, c1, l2, c2) then
       l1, c1, l2, c2 = l2, c2, l1, c1
@@ -384,10 +385,9 @@ function VimState:move_or_select(motion_mode, translate_fn, numerical_argument)
 
   -- We might want to switch modes if we are at a "neutral" position into line mode.
   -- This behaviour depends on the motion mode.
-  local corner1_line, corner1_col, corner2_line, corner2_col = find_corners_from_selection(self.view.doc)
-  local is_visual = self.mode == "v" or self.mode == "v-block" or self.mode == "v-line"
-  if corner1_line == corner2_line then
-    if motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE then
+  if motion_mode.is_text_object then
+    local corner1_line, _, corner2_line, _ = find_corners_from_selection(self.view.doc)
+    if corner1_line == corner2_line and motion_mode.is_linewise then
       self.mode = "v-line"
     end
   end
@@ -396,7 +396,7 @@ function VimState:move_or_select(motion_mode, translate_fn, numerical_argument)
     ---@param state vimxl.vimstate
     local function vim_style_visual_select_to(state)
         for idx, start_line, start_col, end_line, end_col in state.view.doc:get_selections() do
-          local l1, c1, l2, c2 = vim_style_visual_select_to_impl(state.view.doc, start_line, start_col, state.view, numerical_argument, translate_fn, end_line, end_col)
+          local l1, c1, l2, c2 = vim_style_visual_select_to_impl(state.view.doc, start_line, start_col, state.view, motion_mode, translate_fn, numerical_argument, end_line, end_col)
           state.view.doc:set_selections(idx, l1, c1, l2, c2)
         end
     end
@@ -484,13 +484,13 @@ function VimState:move_or_select(motion_mode, translate_fn, numerical_argument)
 
       local l1, c1, l2, c2 = translate_fn(state.view.doc, cursor_line, cursor_col, state.view, numerical_argument)
 
-      if state.mode == "v-line" and l2 ~= nil and c2 ~= nil then
-        if motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE and old_direction == DIRECTION_NEUTRAL then
+      if state.mode == "v-line" and motion_mode.is_text_object and l2 ~= nil and c2 ~= nil then
+        if motion_mode.is_linewise and old_direction == DIRECTION_NEUTRAL then
           -- We got a linewise text object, so select the spanning lines.
           -- But only if we have not already started selecting other things.
           vim_style_visual_line_select_impl(state.view.doc, l2, c2, l1, c1, DIRECTION_FORWARD)
           return
-        elseif motion_mode == vim_motionmodes.MOTION_MODE_CHARWISE then
+        elseif motion_mode.is_charwise then
           -- If we get a text object, just select that text object
           -- and enter ordinary visual mode. As is done in Vim.
           -- TOOD: This doesn't actually seem entirely correct, some text objects like inner word don't do this, while "i(" does.
@@ -520,10 +520,13 @@ function VimState:move_or_select(motion_mode, translate_fn, numerical_argument)
     table.insert(self.command_history, {
       ["type"] = "move_to",
       ["translate"] = function (doc, line, col, view)
-        return translate_fn(doc, line, col, view, numerical_argument)
+        -- We deliberately ignore l2 and c2 if they are passed.
+        local l1, c1 = translate_fn(doc, line, col, view, numerical_argument)
+        return l1, c1
       end,
     })
   else
+    -- TODO: Should we deliberately remove l2 and c2 here as well?
     self.view.doc:move_to(translate_fn, self.view, numerical_argument)
   end
 end
@@ -637,8 +640,7 @@ function VimState:on_char_input(text)
     self.operator_got_motion_cb = nil
 
     -- Text objects are not allowed in normal mode.
-    local is_linewise = vim_motionmodes.linewise[lookup_name]
-    local motion_mode = is_linewise and vim_motionmodes.MOTION_MODE_LINEWISE or vim_motionmodes.MOTION_MODE_CHARWISE
+    local motion_mode = vim_motionmodes.motion_modes[lookup_name] or vim_motionmodes.MOTION_MODE_CHARWISE
 
     -- Either we move or we call the cb. Anything else would be silly...
     if motion_cb then
@@ -751,7 +753,7 @@ local function get_operator_selections_iter(invariant, control)
     l1, c1, l2, c2 = l2, c2, l1, c1
   end
 
-  if motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE then
+  if motion_mode.is_linewise then
     c1 = 0
     c2 = 0
     l2 = l2 + 1

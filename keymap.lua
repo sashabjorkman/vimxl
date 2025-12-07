@@ -78,8 +78,8 @@ local visual_common_mode = {
   ["P"] = "vimxl-visual:paste",
   ["k"] = "vimxl-motion:visual-up",
   ["j"] = "vimxl-motion:visual-down",
-  ["h"] = "vimxl-motion:visual-left",
-  ["l"] = "vimxl-motion:visual-right-clamped",
+  ["h"] = "vimxl-motion:left",
+  ["l"] = "vimxl-motion:right-clamped",
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
   },

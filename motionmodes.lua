@@ -1,24 +1,47 @@
--- Which motions should be treated as linewise?
--- Which is to say that the selection will be clamped
--- to include every line that it passes. Including the
--- newline character.
--- TODO: for perfect emulation there should also be a way to set exclusive or inclusive modes.
-local vim_linewise = {
-  ["vimxl-motion:line-by-number"] = true,
-  ["vimxl-motion:start-of-document"] = true,
-  ["vimxl-motion:up"] = true,
-  ["vimxl-motion:down"] = true,
-  ["vimxl-motion:nth-line-minus-one-printable"] = true,
-  ["vimxl-motion:nth-line-printable"] = true,
-  ["vimxl-motion:end-or-line-no"] = true,
+
+local MOTION_MODE_TEXT_OBJECT = {
+  is_linewise = false,
+  is_charwise = true,
+  is_text_object = true,
 }
 
----0 means charwise
----1 means linewise
----@alias vimxl.motion_mode 0|1
+--When set selection will be clamped
+--to include every line that it passes. Including the newline character.
+--Mutually exclusive with CHARWISE.
+-- TODO: for perfect emulation there should also be a way to set exclusive or inclusive modes (of line mode).
+local MOTION_MODE_LINEWISE = {
+  is_linewise = true,
+  is_charwise = false,
+  is_text_object = false,
+}
+
+local MOTION_MODE_CHARWISE = {
+  is_linewise = false,
+  is_charwise = true,
+  is_text_object = false,
+}
+
+---@alias vimxl.motion_mode {is_linewise: boolean, is_charwise: boolean, is_text_object: boolean}
+
+--A collection of bitmasks that define how different motions and text objects should be treated.
+--@type { [string]: vimxl.motion_mode }
+local vim_motion_modes = {
+  ["vimxl-motion:line-by-number"] = MOTION_MODE_LINEWISE,
+  ["vimxl-motion:start-of-document"] = MOTION_MODE_LINEWISE,
+  ["vimxl-motion:up"] = MOTION_MODE_LINEWISE,
+  ["vimxl-motion:down"] = MOTION_MODE_LINEWISE,
+  ["vimxl-motion:nth-line-minus-one-printable"] = MOTION_MODE_LINEWISE,
+  ["vimxl-motion:nth-line-printable"] = MOTION_MODE_LINEWISE,
+  ["vimxl-motion:end-or-line-no"] = MOTION_MODE_LINEWISE,
+
+  ["vimxl-motion:entire-current-line-or-more"] = MOTION_MODE_TEXT_OBJECT,
+  ["vimxl-motion:select-inner-word"] = MOTION_MODE_TEXT_OBJECT,
+  ["vimxl-motion:select-in-paragraph"] = MOTION_MODE_TEXT_OBJECT,
+}
 
 return {
-  linewise = vim_linewise,
-  MOTION_MODE_CHARWISE = 0,
-  MOTION_MODE_LINEWISE = 1,
+  motion_modes = vim_motion_modes,
+  MOTION_MODE_CHARWISE = MOTION_MODE_CHARWISE,
+  MOTION_MODE_LINEWISE = MOTION_MODE_LINEWISE,
+  MOTION_MODE_TEXT_OBJECT = MOTION_MODE_TEXT_OBJECT,
 }
