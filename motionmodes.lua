@@ -42,6 +42,7 @@ local vim_motion_modes = {
   ["vimxl-motion:entire-current-line-or-more"] = MOTION_MODE_CHARWISE_TEXT_OBJECT,
   ["vimxl-motion:select-inner-word"] = MOTION_MODE_CHARWISE_TEXT_OBJECT,
   ["vimxl-motion:select-in-paragraph"] = MOTION_MODE_LINEWISE_TEXT_OBJECT,
+  ["vimxl-motion:select-around-paragraph"] = MOTION_MODE_LINEWISE_TEXT_OBJECT,
 }
 
 return {

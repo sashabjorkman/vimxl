@@ -464,8 +464,7 @@ function vim_translate.inner_word(doc, line, col)
   return l1, c1, l2, c2
 end
 
----@type vimxl.motion
-function vim_translate.in_paragraph(doc, line, col)
+local function paragraph(doc, line, col, around)
   local l1, l2 = line, line
 
   -- Check if a given line is empty
@@ -504,7 +503,28 @@ function vim_translate.in_paragraph(doc, line, col)
     l2 = l2 + 1
   end
 
+  if around and l2 < #doc.lines and line_is_empty(l2 + 1) then
+    l2 = l2 + 1
+    while l2 < #doc.lines do
+      if not line_is_empty(l2) then
+        l2 = l2 - 1
+        break
+      end
+      l2 = l2 + 1
+    end
+  end
+
   return l1, 1, l2, #doc.lines[l2]
+end
+
+---@type vimxl.motion
+function vim_translate.in_paragraph(doc, line, col)
+  return paragraph(doc, line, col, false)
+end
+
+---@type vimxl.motion
+function vim_translate.around_paragraph(doc, line, col)
+  return paragraph(doc, line, col, true)
 end
 
 vim_translate.previous_char = doc_translate.previous_char
