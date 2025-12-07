@@ -39,6 +39,7 @@ local vim_motions = {
   -- Operator motion specifics.
   ["vimxl-motion:select-inner-word"] = vim_translate.inner_word,
   ["vimxl-motion:select-in-paragraph"] = vim_translate.in_paragraph,
+  ["vimxl-motion:select-around-paragraph"] = vim_translate.around_paragraph,
   ["vimxl-motion:entire-current-line-or-more"] = vim_translate.entire_current_line_or_more,
   ["vimxl-motion:next-word"] = vim_translate.next_word_start,
   ["vimxl-motion:next-word-by-whitespace"] = vim_translate.next_word_start_by_whitespace,

@@ -42,6 +42,9 @@ local motions = {
     ["w"] = "vimxl-motion:select-inner-word",
     ["p"] = "vimxl-motion:select-in-paragraph",
   },
+  ["a"] = {
+    ["p"] = "vimxl-motion:select-around-paragraph",
+  },
   [constants.MOTION_LINE_REPEAT] = "vimxl-motion:nth-line-minus-one-printable",
 
   -- TODO: Add "v" that disables linewise for the operation. This would require some special logic in vimstate.
@@ -84,6 +87,9 @@ local visual_common_mode = {
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
     ["p"] = "vimxl-motion:select-in-paragraph",
+  },
+  ["a"] = {
+    ["p"] = "vimxl-motion:select-around-paragraph",
   },
 }
 
