@@ -32,9 +32,9 @@ local vim_motions = {
   ["vimxl-motion:right"] = vim_translate.right,
   ["vimxl-motion:right-clamped"] = vim_translate.right_clamped,
 
-  -- Given distinct ID:s so that they are not treated as linewise. They use the same underlying function.
-  ["vimxl-motion:visual-up"] = vim_translate.up,
-  ["vimxl-motion:visual-down"] = vim_translate.down,
+  -- Given distinct ID:s so that the others don't have to be treated as linewise. They use the same underlying function.
+  ["vimxl-motion:linewise-up"] = vim_translate.up,
+  ["vimxl-motion:linewise-down"] = vim_translate.down,
 
   -- Operator motion specifics.
   ["vimxl-motion:select-inner-word"] = vim_translate.inner_word,

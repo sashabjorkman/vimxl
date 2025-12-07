@@ -32,8 +32,8 @@ local motions = {
   ["e"] = "vimxl-motion:end-of-word",
   ["b"] = "vimxl-motion:prev-word",
   ["B"] = "vimxl-motion:prev-word-by-whitespace",
-  ["k"] = "vimxl-motion:up",
-  ["j"] = "vimxl-motion:down",
+  ["k"] = "vimxl-motion:linewise-up",
+  ["j"] = "vimxl-motion:linewise-down",
   ["h"] = "vimxl-motion:left",
   ["l"] = "vimxl-motion:right",
   ["f"] = find_motions.forward,
@@ -66,6 +66,10 @@ local normal_and_visual_mode = {
   ["B"] = "vimxl-motion:prev-word-by-whitespace",
   ["f"] = find_motions.navigate_forward,
   ["F"] = find_motions.navigate_backward,
+  ["k"] = "vimxl-motion:up",
+  ["j"] = "vimxl-motion:down",
+  ["h"] = "vimxl-motion:left",
+  ["l"] = "vimxl-motion:right-clamped",
 }
 
 ---@type vimxl.keybind_map
@@ -76,10 +80,6 @@ local visual_common_mode = {
   ["d"] = "vimxl-visual:delete",
   ["p"] = "vimxl-visual:paste",
   ["P"] = "vimxl-visual:paste",
-  ["k"] = "vimxl-motion:visual-up",
-  ["j"] = "vimxl-motion:visual-down",
-  ["h"] = "vimxl-motion:left",
-  ["l"] = "vimxl-motion:right-clamped",
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
   },
@@ -136,11 +136,6 @@ local normal_mode = {
   ["N"] = "vimxl-normal:previous-find",
   ["."] = "vimxl-normal:repeat",
   [":"] = "vimxl-normal:command-mode",
-
-  ["k"] = "vimxl-motion:up",
-  ["j"] = "vimxl-motion:down",
-  ["h"] = "vimxl-motion:left",
-  ["l"] = "vimxl-motion:right-clamped",
 }
 
 for k, v in pairs(normal_and_visual_mode) do
