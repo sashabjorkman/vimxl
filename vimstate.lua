@@ -386,8 +386,7 @@ function VimState:move_or_select(motion_mode, translate_fn, numerical_argument)
   -- This behaviour depends on the motion mode.
   local corner1_line, corner1_col, corner2_line, corner2_col = find_corners_from_selection(self.view.doc)
   local is_visual = self.mode == "v" or self.mode == "v-block" or self.mode == "v-line"
-  local same_col = (corner1_col == corner2_col + 1 or corner1_col == corner2_col)
-  if corner1_line == corner2_line and same_col then
+  if corner1_line == corner2_line then
     if motion_mode == vim_motionmodes.MOTION_MODE_LINEWISE then
       self.mode = "v-line"
     end
