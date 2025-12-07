@@ -464,6 +464,49 @@ function vim_translate.inner_word(doc, line, col)
   return l1, c1, l2, c2
 end
 
+---@type vimxl.motion
+function vim_translate.in_paragraph(doc, line, col)
+  local l1, l2 = line, line
+
+  -- Check if a given line is empty
+  local function line_is_empty(line)
+    for i = 1, #doc.lines[line] do
+      if not is_whitespace(doc:get_char(line, i)) then
+        return false
+      end
+    end
+    return true
+  end
+
+  -- Don't extend selection if original
+  -- line is empty
+  if line_is_empty(line) then
+    return line, col, line, col
+  end
+
+  -- Extend up
+  while l1 > 1 do
+    if line_is_empty(l1) then
+      l1 = l1 + 1
+      break
+    end
+
+    l1 = l1 - 1
+  end
+
+  -- Extend down
+  while l2 < #doc.lines do
+    if line_is_empty(l2) then
+      l2 = l2 - 1
+      break
+    end
+
+    l2 = l2 + 1
+  end
+
+  return l1, 1, l2, #doc.lines[l2]
+end
+
 vim_translate.previous_char = doc_translate.previous_char
 vim_translate.next_char = doc_translate.next_char
 

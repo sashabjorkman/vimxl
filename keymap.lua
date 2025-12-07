@@ -40,6 +40,7 @@ local motions = {
   ["F"] = find_motions.backward,
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
+    ["p"] = "vimxl-motion:select-in-paragraph",
   },
   [constants.MOTION_LINE_REPEAT] = "vimxl-motion:nth-line-minus-one-printable",
 
@@ -82,6 +83,7 @@ local visual_common_mode = {
   ["P"] = "vimxl-visual:paste",
   ["i"] = {
     ["w"] = "vimxl-motion:select-inner-word",
+    ["p"] = "vimxl-motion:select-in-paragraph",
   },
 }
 
