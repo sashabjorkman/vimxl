@@ -485,11 +485,20 @@ function VimState:move_or_select(motion_mode, translate_fn, numerical_argument)
       local l1, c1, l2, c2 = translate_fn(state.view.doc, cursor_line, cursor_col, state.view, numerical_argument)
 
       if state.mode == "v-line" and motion_mode.is_text_object and l2 ~= nil and c2 ~= nil then
-        if motion_mode.is_linewise and old_direction == DIRECTION_NEUTRAL then
-          -- We got a linewise text object, so select the spanning lines.
-          -- But only if we have not already started selecting other things.
-          vim_style_visual_line_select_impl(state.view.doc, l2, c2, l1, c1, DIRECTION_FORWARD)
-          return
+        if motion_mode.is_linewise then
+          if old_direction == DIRECTION_NEUTRAL then
+            -- We got a linewise text object, so select the spanning lines.
+            -- But only if we have not already started selecting other things.
+            vim_style_visual_line_select_impl(state.view.doc, l2, c2, l1, c1, DIRECTION_FORWARD)
+            return
+          elseif old_direction == DIRECTION_FORWARD then
+            -- Extend using the text object.
+            if is_selection_going_forward(l2, c2, l1, c1) then
+              l1, c1, l2, c2 = l2, c2, l1, c1
+            end
+            vim_style_visual_line_select_impl(state.view.doc, l1, c1, start_line, end_line, DIRECTION_FORWARD)
+            return
+          end
         elseif motion_mode.is_charwise then
           -- If we get a text object, just select that text object
           -- and enter ordinary visual mode. As is done in Vim.
