@@ -52,6 +52,12 @@ command.add(vim_mode_predicate, {
     -- Also mouse cursor clicks should be line-len clamped as well then...
     core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, vim_translate.next_char)
   end,
+  ["vimxl:move-to-next-word"] = function ()
+    core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, vim_translate.next_word_start_by_whitespace_multiline)
+  end,
+  ["vimxl:move-to-previous-word"] = function ()
+    core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, vim_translate.prev_word_start_by_whitespace)
+  end,
   ["vimxl:move-to-previous-line"] = function ()
     core.active_view.vim_state:move_or_select(vim_motionmodes.MOTION_MODE_CHARWISE, DocView.translate.previous_line)
   end,

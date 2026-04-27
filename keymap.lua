@@ -165,6 +165,8 @@ keymap.add {
   ["escape"] = { "vimxl:escape-mode" },
   ["left"] = { "vimxl:move-to-previous-char" },
   ["right"] = { "vimxl:move-to-next-char" },
+  ["ctrl+left"] = { "vimxl:move-to-previous-word" },
+  ["ctrl+right"] = { "vimxl:move-to-next-word" },
   ["up"] = { "vimxl:move-to-previous-line" },
   ["down"] = { "vimxl:move-to-next-line" },
   ["pageup"] = { "vimxl:move-to-previous-page" },
