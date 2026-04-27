@@ -6,8 +6,8 @@ local vim_translate = require "plugins.vimxl.translate"
 local vim_motionmodes = require "plugins.vimxl.motionmodes"
 
 ---A function that can be invoked through Vim keybinds.
----It can also be invoked through the command mode if put inside the 
--- vim_visible_commands table. 
+---It can also be invoked through the command mode if put inside the
+-- vim_visible_commands table.
 ---@alias vimxl.vim_command fun(view: vimxl.vimstate, numerical_argument: number | nil)
 
 ---All commands known to Vim.

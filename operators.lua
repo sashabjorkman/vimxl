@@ -213,8 +213,14 @@ function operators.generic_replace(state, delete_style, should_set_clipboard, pa
     local keep_indent = false
     if delete_style == operators.DELETE_STYLE_ALL and line2 > #state.view.doc.lines then
       -- Handle the deletion of the last lines by removing an extra newline.
-      line1 = line1 - 1
-      col1 = #state.view.doc.lines[line1]
+      if line1 <= 1 then
+        -- But if this is the first line of the file we must include it as well.
+        line1 = 1
+        col1 = 1
+      else
+        line1 = line1 - 1
+        col1 = #state.view.doc.lines[line1]
+      end
       keep_indent = true
     elseif delete_style == operators.DELETE_STYLE_KEEP_LINE and line1 ~= line2 and col2 <= 1 and col1 <= 1 then
       -- This was a linewise remove. But we don't want to
