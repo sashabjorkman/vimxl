@@ -1,6 +1,7 @@
 -- Default keymap for Vim-mode. Note that the
 -- keymap for Vim-mode does not build upon the Lite-XL keymap.
 
+local core = require "core"
 local keymap = require "core.keymap"
 
 local constants = require "plugins.vimxl.constants"
@@ -159,26 +160,69 @@ for k, v in pairs(visual_common_mode) do
   visual_block_mode[k] = v
 end
 
+---Used to place a command just before another already known command.
+---It will complain if we don't find that command. But it will also
+---append the command to the end of the command list.
+---@param key string
+---@param what string
+---@param cmd string
+local function add_keymap_before(key, cmd, what)
+  local commands = keymap.map[key]
+  if commands == nil then
+    -- Doesn't exist yet. So just add normally.
+    keymap.add {
+      [key] = { cmd }
+    }
+    return
+  end
+
+  for i, v in ipairs(commands) do
+    if v == what then
+      table.insert(commands, i, cmd)
+      return
+    end
+  end
+
+  core.error("Command %s was placed at the back because %s could not be found in %s", cmd, what, key)
+  table.insert(commands, cmd)
+end
+
 -- Applies globally. This uses the Lite-XL keymap because the Vim-mode keymap
 -- is only concerned with data that is given through on_text_input.
-keymap.add {
-  ["escape"] = { "vimxl:escape-mode" },
-  ["left"] = { "vimxl:move-to-previous-char" },
-  ["right"] = { "vimxl:move-to-next-char" },
-  ["ctrl+left"] = { "vimxl:move-to-previous-word" },
-  ["ctrl+right"] = { "vimxl:move-to-next-word" },
-  ["up"] = { "vimxl:move-to-previous-line" },
-  ["down"] = { "vimxl:move-to-next-line" },
-  ["pageup"] = { "vimxl:move-to-previous-page" },
-  ["pagedown"] = { "vimxl:move-to-next-page" },
-  ["ctrl+r"] = { "vimxl:redo" },
-  ["ctrl+v"] = { "vimxl:enter-block-mode" },
-  ["return"] = { "vimxl:newline" },
-  ["keypad enter"] = { "vimxl:newline" },
-}
+-- We use the special add_keymap_before to make sure that we don't accidentally override the behaviour
+-- of other plugins, such as the autocomplete plugin.
+-- So instead we find the normal behaviour (the doc commands) and place
+-- our own command just before that one.
+local function apply_global_vimxl_keybinds()
+  add_keymap_before("escape", "vimxl:escape-mode", "doc:select-none")
+
+  add_keymap_before("up", "vimxl:move-to-previous-line", "doc:move-to-previous-line")
+  add_keymap_before("down", "vimxl:move-to-next-line", "doc:move-to-next-line")
+
+  add_keymap_before("left", "vimxl:move-to-previous-char", "doc:move-to-previous-char")
+  add_keymap_before("right", "vimxl:move-to-next-char", "doc:move-to-next-char")
+
+  add_keymap_before("ctrl+left", "vimxl:move-to-previous-word", "doc:move-to-previous-word-start")
+  add_keymap_before("ctrl+right", "vimxl:move-to-next-word", "doc:move-to-next-word-end")
+
+  add_keymap_before("pageup", "vimxl:move-to-previous-page", "doc:move-to-previous-page")
+  add_keymap_before("pagedown", "vimxl:move-to-next-page", "doc:move-to-next-page")
+
+  add_keymap_before("return", "vimxl:newline", "doc:newline")
+  add_keymap_before("keypad enter", "vimxl:newline", "doc:newline")
+
+  -- These ones we don't really want them to override.
+  -- As they are kinda important for us.
+  -- Our predicate will disable them where appropriate.
+  keymap.add {
+    ["ctrl+r"] = { "vimxl:redo" },
+    ["ctrl+v"] = { "vimxl:enter-block-mode" },
+  }
+end
 
 ---A collection of different keymap roots.
 return {
+  ["apply_global_vimxl_keybinds"] = apply_global_vimxl_keybinds,
   ["motions"] = motions,
   ["normal"] = normal_mode,
   ["visual"] = visual_mode,

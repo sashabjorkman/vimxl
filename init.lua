@@ -14,6 +14,7 @@ local apply_autocomplete_patches = require "plugins.vimxl.autocomplete-patcher"
 local constants = require "plugins.vimxl.constants"
 local vim_translate = require "plugins.vimxl.translate"
 local vim_motionmodes = require "plugins.vimxl.motionmodes"
+local vim_keymap = require "plugins.vimxl.keymap"
 local VimState = require "plugins.vimxl.vimstate"
 
 local default_config = {
@@ -31,11 +32,13 @@ default_config.config_spec = {
 
 config.plugins.vimxl = common.merge(default_config, config.plugins.vimxl)
 
-
 local function vim_mode_predicate()
   local view = core.active_view
   return view:extends(DocView) and view.vim_state ~= nil
 end
+
+
+local apply_global_vimxl_keybinds = vim_keymap.apply_global_vimxl_keybinds
 
 -- TOOD: Handle special case enter to \n
 
@@ -185,3 +188,4 @@ end
 apply_tracking_patches()
 apply_docview_patches()
 apply_autocomplete_patches()
+apply_global_vimxl_keybinds()
